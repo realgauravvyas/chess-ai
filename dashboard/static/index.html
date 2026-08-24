@@ -19,8 +19,27 @@ header{display:flex;align-items:center;gap:14px;padding:12px 22px;
   background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
 header h1{font-size:18px;margin:0;font-weight:600}
 .pill{padding:3px 10px;border-radius:20px;font-size:12px;border:1px solid var(--border)}
-.pill.live{background:#12351f;color:#57d98a;border-color:#1f5c35}
+.pill.live{background:#12351f;color:#57d98a;border-color:#1f5c35;
+  animation:livePulse 2s ease-in-out infinite}
 .pill.idle{background:#33262a;color:#e08a96;border-color:#5c2f38}
+.pill.stale{background:#3a3320;color:#e8c46a;border-color:#5c4f2f}
+@keyframes livePulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(87,217,138,.45)}
+  50%    {box-shadow:0 0 0 6px rgba(87,217,138,0)}
+}
+/* heartbeat dot: one blink per successful poll */
+#beat{display:inline-block;width:9px;height:9px;border-radius:50%;
+  background:#2a3345;margin-right:7px;vertical-align:middle;
+  transition:background .15s ease, box-shadow .15s ease}
+#beat.on{background:#57d98a;box-shadow:0 0 9px 2px rgba(87,217,138,.75)}
+#beat.err{background:#e08a96;box-shadow:0 0 9px 2px rgba(224,138,150,.7)}
+/* whole pill flashes when a new iteration lands */
+@keyframes iterFlash{
+  0%  {background:#1c6b3a;color:#eafff1;transform:scale(1.06)}
+  100%{background:#12351f;color:#57d98a;transform:scale(1)}
+}
+.pill.flash{animation:iterFlash 1.1s ease-out}
+#ago{font-variant-numeric:tabular-nums}
 .spacer{flex:1}
 .muted{color:var(--muted)}
 button{background:var(--accent);border:none;color:#fff;padding:7px 14px;
@@ -155,7 +174,9 @@ table.data tr:hover td{background:rgba(255,255,255,.04)}
 <body>
 <header>
   <h1>♛ Chess AI Dashboard</h1>
+  <span id="beat" title="blinks on every successful poll"></span>
   <span id="trainpill" class="pill idle">training: ?</span>
+  <span class="muted" id="ago">updated just now</span>
   <span class="muted" id="lastact"></span>
   <div class="spacer"></div>
   <span class="chip" id="modelinfo"></span>
@@ -252,6 +273,8 @@ let S = {
 const $ = id => document.getElementById(id);
 
 /* ============================================================ sound (Web Audio, no assets) */
+const LIVE = {lastOk: Date.now(), iter: null};
+
 const AudioFX=(()=>{
   let ctx=null;
   const D={enabled:localStorage.getItem("snd")!=="0"};
@@ -652,13 +675,36 @@ function refreshStats(){
           + `  ·  last ${last.score}% ${last.promoted?"PROMOTED":"rejected"}`;
       }
     }
-    $("trainpill").textContent = st.training_alive? "training: LIVE" : "training: idle";
-    $("trainpill").className = "pill "+(st.training_alive?"live":"idle");
-    $("lastact").textContent = "last log write: "+(st.last_activity||"—")
-      +"  ·  latest iter: "+(st.latest_iter ?? "–");
+    beat();                       // blink: this poll reached the server
+    LIVE.lastOk = Date.now();
+
+    const pill = $("trainpill");
+    pill.textContent = st.training_alive
+      ? `training: LIVE · iter ${st.latest_iter ?? "–"}`
+      : "training: idle";
+    pill.className = "pill "+(st.training_alive?"live":"idle");
+
+    // a new iteration landed since the last poll -> flash the pill
+    if(st.training_alive && LIVE.iter !== null && st.latest_iter > LIVE.iter){
+      pill.classList.remove("flash");
+      void pill.offsetWidth;             // restart the animation
+      pill.classList.add("flash");
+    }
+    LIVE.iter = st.latest_iter ?? null;
+
+    // tab title doubles as a progress readout when the tab is in the background
+    document.title = st.training_alive
+      ? `▶ iter ${st.latest_iter ?? "?"} · Chess AI`
+      : "Chess AI Dashboard";
+
+    $("lastact").textContent = "last log write: "+(st.last_activity||"—");
     $("modelinfo").textContent =
       `${st.model_info.parameters.toLocaleString()} params · ${st.model_info.filters}f×${st.model_info.res_blocks}b`;
-  }).catch(()=>{ $("trainpill").textContent="training: ?"; });
+  }).catch(()=>{
+    beat(true);                   // red blink: the server did not answer
+    $("trainpill").textContent="training: ?";
+    $("trainpill").className="pill idle";
+  });
 }
 
 async function refreshCheckpoints(){
@@ -693,12 +739,34 @@ function pollEval(){
 }
 
 /* ============================================================ init */
+/* ---- live heartbeat -------------------------------------------------
+   Three independent signals that the page is not frozen:
+     * #beat blinks green on every poll that reaches the server (red if not)
+     * the pill pulses continuously while training is alive
+     * "updated Ns ago" ticks every second, and turns amber past 60s
+------------------------------------------------------------------- */
+function beat(isError){
+  const b = $("beat"); if(!b) return;
+  b.className = isError ? "err" : "on";
+  setTimeout(()=>{ b.className = ""; }, 550);
+}
+
+function tickAgo(){
+  const el = $("ago"); if(!el) return;
+  const secs = Math.round((Date.now() - LIVE.lastOk)/1000);
+  el.textContent = secs < 2 ? "updated just now" : `updated ${secs}s ago`;
+  // polling is every 10s, so anything past 60s means the page has gone stale
+  el.style.color = secs > 60 ? "var(--amber, #e8c46a)" : "";
+}
+
 function refreshAll(){ refreshStats(); refreshCheckpoints(); }
 window.addEventListener("resize",()=>refreshStats());
 $("sims").oninput=e=>$("simsval").textContent=e.target.value;
 refreshStats(); refreshCheckpoints();
 newGame();
-setInterval(refreshStats, 20000);
+setInterval(refreshStats, 10000);   // training writes a line every ~2.5 min
+setInterval(tickAgo, 1000);
+tickAgo();
 setInterval(()=>{ fetch("/api/checkpoints").then(r=>r.json())
   .then(l=>{$("ckcount").textContent=l.length;}); }, 30000);
 
