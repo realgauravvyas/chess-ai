@@ -42,3 +42,13 @@ Thumbs.db
 
 # ---- Local safety copies made while debugging ------------------------
 *.bak
+
+# ---- LaTeX intermediates from the report build -----------------------
+docs/ieee_report/*.aux
+docs/ieee_report/*.bbl
+docs/ieee_report/*.blg
+docs/ieee_report/*.out
+docs/ieee_report/*.log
+docs/ieee_report/[a-e][0-9].log
+docs/ieee_report/build*.log
+docs/ieee_report/bib.log

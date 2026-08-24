@@ -1,0 +1,539 @@
+\documentclass{article}
+\usepackage{spconf,amsmath,amssymb,graphicx,hyperref}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{stfloats}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+
+% Allow long URLs to break between letters, not just at punctuation,
+% so the repository link does not overflow the column.
+\makeatletter
+\g@addto@macro\UrlBreaks{\do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m\do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z}
+\makeatother
+\setcounter{topnumber}{2}
+\tolerance=1200
+\emergencystretch=1em
+
+\def\x{{\mathbf x}}
+\def\L{{\cal L}}
+
+\title{Learning Chess Without Chess Knowledge: Supervised Bootstrapping
+and Gated Self-Play Reinforcement Learning}
+
+\name{Gaurav Vyas (Roll Number: 23035010370)}
+
+\address{
+Internship / Term Project Report\\
+Trimester 9, Project 3\\[0.5em]
+B.Sc. (Honours) Data Science and Artificial Intelligence\\
+Indian Institute of Technology Guwahati, India\\
+\texttt{g.vyas@op.iitg.ac.in}
+}
+
+\begin{document}
+\ninept
+\maketitle
+
+\begin{abstract}
+This report documents a project on training a compact neural network to play
+chess without hand-coded chess knowledge, using the AlphaZero recipe: a
+residual policy--value network trained first by supervised imitation of human
+games and then improved by self-play guided by Monte Carlo Tree Search. A
+760\,717-parameter network was trained on 676\,648 positions mined
+from the Lichess open database, reaching a policy cross-entropy of
+2.06. The central finding is methodological rather than architectural.
+The evaluation procedure originally used scored games from White's
+perspective while the network alternated colours, which rendered 159
+logged evaluation points across two training runs statistically vacuous.
+Once corrected scoring was applied, direct head-to-head play revealed that
+300 iterations of self-play had made the model \emph{weaker} than its
+own starting point ($2.5$ to $5.5$ over eight games) even as training loss
+fell monotonically. Two root causes were identified and fixed: policy
+targets formed from 40-visit search histograms are dominated by
+sampling noise, and a mirror data-augmentation step was generating
+physically impossible board states. A corrected pipeline adds acceptance
+gating, which makes regression structurally impossible.
+\end{abstract}
+
+\begin{keywords}
+Reinforcement Learning, Monte Carlo Tree Search, Deep Learning,
+Self-Play, Evaluation Methodology, Experimental Design
+\end{keywords}
+
+%======================================================================
+\section{Introduction}
+%======================================================================
+
+Game playing has long served as a testbed for machine learning because the
+reward is unambiguous and data can be generated without human annotation.
+AlphaZero~\cite{silver2018alphazero} showed that a single neural network,
+trained purely by self-play and guided by Monte Carlo Tree Search (MCTS),
+can reach superhuman strength in chess, shogi and Go without any
+domain-specific heuristics. The recipe is attractive from a data-science
+standpoint because it is a closed loop: the model generates its own training
+distribution, and improvements compound.
+
+That closed loop is also its central risk. When a model manufactures its own
+labels, errors are not merely tolerated but amplified, and the usual
+supervised-learning safety net --- a held-out set whose labels are known to
+be correct --- does not exist. The quantity a practitioner actually cares
+about, playing strength, is not the quantity being minimised, and the two can
+move in opposite directions without any warning appearing in the loss curve.
+
+This project reproduces the AlphaZero recipe at a scale that fits on a single
+desktop machine, and then subjects it to the measurement discipline that
+self-play demands. Section~\ref{sec:problem} states the problem and
+objectives. Section~\ref{sec:method} describes the data pipeline, the
+representation, the network and the two training stages.
+Section~\ref{sec:results} presents the experimental results, including a
+defect in the evaluation methodology that invalidated an entire training run.
+Section~\ref{sec:discussion} interprets these findings, and
+Section~\ref{sec:conclusion} concludes.
+
+%======================================================================
+\section{Problem Statement and Objectives}
+\label{sec:problem}
+%======================================================================
+
+\subsection{Problem Statement}
+Given only the rules of chess and a corpus of human games, train a neural
+network with fewer than one million parameters to select strong moves,
+subject to the constraint that all data generation, training and evaluation
+run on a single consumer machine (six CPU cores, one mid-range GPU) within a
+few hours per experiment. The network receives no evaluation function, no
+opening book, no endgame tablebase and no hand-engineered features; it must
+learn the value of a position and the plausibility of a move entirely from
+data.
+
+The scale constraint is not incidental. AlphaZero used 5000 TPUs and
+800 MCTS simulations per move; this project has roughly six orders of
+magnitude less compute. The interesting question is therefore not whether the
+recipe reaches grandmaster strength, but \emph{which parts of it survive
+aggressive downscaling} --- and how one would know.
+
+\subsection{Objectives}
+\begin{enumerate}[noitemsep]
+  \item To design and implement an end-to-end pipeline: data acquisition,
+        board representation, network, search, training and evaluation.
+  \item To bootstrap the network by supervised imitation of human play, and
+        quantify the resulting move-prediction quality.
+  \item To improve the bootstrapped network by self-play reinforcement
+        learning, and \emph{verify} that improvement with a metric valid
+        under self-play conditions.
+  \item To diagnose any failure to improve, and to make the training
+        procedure robust against it.
+\end{enumerate}
+
+Objective~3 is deliberately phrased to separate \emph{running} the algorithm
+from \emph{demonstrating} that it worked. That separation turned out to carry
+the entire result.
+
+%======================================================================
+\section{Methodology}
+\label{sec:method}
+%======================================================================
+
+\subsection{Overall Workflow}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=5mm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+              minimum height=6mm, inner xsep=3pt},
+  >={Stealth[length=1.6mm]}]
+\node[box, fill=blue!6] (pgn) {Lichess PGN\\ 676\,648 positions};
+\node[box, fill=blue!6, right=of pgn] (sup) {supervised\\ pretraining};
+\node[box, fill=green!8, below=7mm of sup] (net) {policy--value\\ network};
+\node[box, fill=orange!8, left=of net] (sp) {self-play\\ (MCTS)};
+\node[box, fill=orange!8, below=7mm of net] (gate) {gating match};
+\draw[->] (pgn) -- (sup);
+\draw[->] (sup) -- (net);
+\draw[->] (net) -- (sp);
+\draw[->] (sp) |- (gate);
+\draw[->] (gate) -- node[right, font=\scriptsize] {promote if $\geq 55\%$} (net);
+\end{tikzpicture}
+\caption{The two-stage pipeline. Supervised pretraining supplies the initial
+policy; self-play then proposes updates, which are accepted only if they win
+a head-to-head match against the incumbent weights.}
+\label{fig:pipeline}
+\end{figure}
+
+Training proceeds in two stages (Figure~\ref{fig:pipeline}). Stage~1 fits the
+network to human moves, giving it an immediate grasp of openings and basic
+tactics. Stage~2 replaces the human teacher with the network's own search. An
+acceptance gate, added after the diagnosis in Section~\ref{sec:regression},
+sits between the two.
+
+\subsection{Data Pipeline}
+
+Data come from the Lichess open database~\cite{lichess}, distributed as
+Zstandard-compressed PGN. Monthly dumps are streamed and decompressed
+incrementally rather than materialised, since a single month exceeds
+available memory when expanded.
+
+Quality filtering is applied at the game level: only games in which
+\emph{both} players are rated at least 1750 Elo are retained, so that
+the network imitates competent rather than average play. This filter is
+aggressive --- it admits roughly 12\% of games --- and it is the main
+reason the final corpus is 676\,648 positions drawn from approximately
+9600 games rather than the 80\,000 games read.
+
+Each retained position yields one training example: an $18\times8\times8$
+tensor, the index of the move the human actually played, and the game outcome
+expressed from the side to move. A subset of 40\,000 examples is frozen
+as a \emph{rehearsal anchor} (Section~\ref{sec:selfplay}), and 6000
+positions taken five to eight plies into games are retained as a self-play
+opening curriculum.
+
+\subsection{Representation and Action Encoding}
+\label{sec:repr}
+
+The board is encoded as 18 binary planes of $8\times8$: twelve
+piece-placement planes (six piece types $\times$ two colours), four
+castling-rights planes, one en-passant plane and one side-to-move plane.
+
+The action space follows the Leela Chess Zero scheme~\cite{lczero}: each of
+the 64 origin squares carries 73 move planes --- 56
+queen-style moves (eight directions $\times$ seven distances), eight knight
+moves and nine underpromotions --- giving $64\times73=4672$ actions, indexed
+as $\text{index} = \text{from} \times 73 + \text{plane}$. A round-trip
+self-test verifies that every legal move in a sample of positions encodes and
+decodes without collision.
+
+\subsection{Network Architecture}
+
+The network is a residual convolutional trunk~\cite{he2016resnet} with two heads: a $3\times3$
+convolution mapping 18 input planes to 64 channels, ten residual
+blocks of two $3\times3$ convolutions with batch normalisation~\cite{ioffe2015batchnorm}, a policy head
+($1\times1$ convolution to 73 planes, reshaped to 4672 logits)
+and a value head ($1\times1$ convolution to one channel, a fully connected
+layer to 64 units, and a scalar through $\tanh$). Total trainable
+parameters: 760\,717.
+
+The two heads share the trunk, so the model is trained multi-task: the value
+head learns \emph{who is winning} while the policy head learns \emph{which
+moves are plausible}, and the shared representation must serve both.
+
+\subsection{Stage 1: Supervised Pretraining}
+
+Given a position $s$, the human move $m$ and the outcome $z\in\{-1,0,+1\}$,
+the loss is
+\begin{equation}
+\L_{\text{sup}} = -\log p_{\theta}(m \mid s) + \big(v_{\theta}(s)-z\big)^2 ,
+\end{equation}
+optimised with Adam~\cite{kingma2015adam}, a cosine learning-rate schedule from $10^{-3}$ to
+$10^{-4}$, and batch size 256 for three epochs.
+
+\subsection{Stage 2: Self-Play Reinforcement Learning}
+\label{sec:selfplay}
+
+The network plays itself. Each move is selected by MCTS~\cite{kocsis2006uct, browne2012mcts}, which descends the
+tree by the PUCT rule~\cite{rosin2011puct}
+\begin{equation}
+U(s,a) = Q(s,a) + c_{\text{puct}}\,P(s,a)\,\frac{\sqrt{N(s)}}{1+N(s,a)},
+\end{equation}
+where $Q$ is the mean value of the child, $P$ the network prior and $N$ the
+visit count. Leaves are evaluated by the network; terminal positions use the
+true result. Dirichlet noise is added at the root during self-play only.
+
+The normalised visit distribution $\pi$ becomes the policy target and the
+game result $z$ the value target, giving the AlphaZero loss
+\begin{equation}
+\L = \mathbb{E}_{s}\Big[-\pi^{\top}\log p_{\theta}(s)
+      + \big(v_{\theta}(s)-z\big)^2\Big] + \lambda\lVert\theta\rVert^2 .
+\label{eq:azloss}
+\end{equation}
+
+Two additions guard against catastrophic forgetting~\cite{mccloskey1989catastrophic} of the supervised knowledge; the first is rehearsal on a frozen exemplar set~\cite{rebuffi2017icarl}: 30\%
+of every minibatch is drawn from the frozen rehearsal anchor, and self-play
+games start from curriculum positions 85\% of the time.
+
+Self-play runs in six CPU worker processes while gradient steps run on the
+GPU, overlapped so that neither device idles; self-play therefore uses
+weights one iteration stale, a standard relaxation.
+
+\subsection{Evaluation Methodology}
+\label{sec:evalmethod}
+
+Because self-play provides no held-out labels, playing strength must be
+measured by playing games. Three properties are required for such a
+measurement to carry information:
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{Correct attribution.} A match result must be scored from the
+        \emph{network's} perspective. If the network alternates colours and
+        results are tallied as raw PGN strings, every win as Black is
+        recorded as a loss.
+  \item \textbf{Independent games.} Two deterministic players replay one
+        identical game. An $N$-game match between deterministic agents
+        contains one game of information unless openings are randomised.
+  \item \textbf{An informative opponent.} A fixed, frozen reference opponent
+        measures progress; an opponent that improves alongside the model
+        measures nothing.
+\end{enumerate}
+
+All three were violated in the original implementation. Their restoration is
+what makes Section~\ref{sec:results} interpretable.
+
+%======================================================================
+\section{Experiments and Results}
+\label{sec:results}
+%======================================================================
+
+\subsection{Experimental Setup}
+All experiments ran on an Intel i5-12400F (six cores, twelve threads) with an
+NVIDIA RTX 3060, in PyTorch~2.13~\cite{paszke2019pytorch} with \texttt{python-chess}~\cite{pythonchess} for rules.
+Self-play is CPU-bound (single-threaded Python MCTS); the GPU serves only
+batched gradient steps, so low GPU utilisation during training is expected
+rather than symptomatic. Measured throughput at twelve games per iteration on
+six workers is 42\,s at 40 simulations and 180\,s
+at 128.
+
+\subsection{Supervised Pretraining}
+Policy cross-entropy fell from 3.90 to 2.06 over three epochs
+(Figure~\ref{fig:pretrain}). A cross-entropy of 2.06 over 4672
+actions corresponds to assigning roughly 13\% probability to the move a
+strong human actually chose, against a uniform-over-legal-moves baseline near
+3.4.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/pretrain_loss.pdf}
+\caption{Supervised stage. Policy cross-entropy converges to $\approx 2.06$;
+value MSE plateaus near 0.73, reflecting the intrinsic difficulty of
+predicting a game outcome from a single mid-game position.}
+\label{fig:pretrain}
+\end{figure}
+
+Behavioural probes confirm the loss reflects real chess competence: from the
+initial position the network's raw policy assigns 0.594 to \texttt{e4}
+and 0.313 to \texttt{d4}; it answers \texttt{e4} with \texttt{e5} or
+\texttt{c5}; it captures a hanging queen; and it finds a mate in one. Against
+a uniformly random opponent it scores 85\% over ten games.
+
+\subsection{A Defect in the Evaluation Metric}
+\label{sec:metric}
+
+The evaluation harness alternated the network between colours but scored
+wins-as-White plus half the draws. Combined with the absence of opening
+randomisation, the consequence is a tally that can only be symmetric, and a
+score pinned near 50\% regardless of the model:
+
+\begin{center}\ttfamily\scriptsize
+[iter 454] eval: \{1-0: 0, 0-1: 0, 1/2-1/2: 10\} (score 50\%)\\{}
+[iter 499] eval: \{1-0: 0, 0-1: 0, 1/2-1/2: 10\} (score 50\%)
+\end{center}
+
+159 evaluation points across two runs conveyed no information. The same
+defect reported the pretrained model at 44\% against a random opponent
+when its true score is 85\%.
+
+\subsection{Self-Play Regressed}
+\label{sec:regression}
+
+With corrected scoring and randomised openings, the final model of the
+300-iteration self-play run was played directly against its own
+starting point over eight games:
+\begin{center}
+\textbf{v5 \texttt{iter\_500} \quad 2.5 -- 5.5 \quad pretrained
+\texttt{iter\_200}}
+\end{center}
+Self-play made the model \emph{worse}. Throughout those 300 iterations
+the training loss fell monotonically from 2.36 to 1.85
+(Figure~\ref{fig:v5}). Loss is not a strength signal.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/v5_regression.pdf}
+\caption{The v5 run. Training loss (left axis) falls throughout, while the
+reported evaluation score (right axis) is pinned at 50\% by the defect
+of Section~\ref{sec:metric}. Direct head-to-head play shows the model in fact
+got weaker.}
+\label{fig:v5}
+\end{figure}
+
+An earlier run without the rehearsal anchor failed more visibly: its policy
+degenerated to opening with \texttt{f3}, its value head returned $-0.270$ for
+the balanced initial position, and it no longer captured a hanging queen ---
+textbook catastrophic forgetting~\cite{mccloskey1989catastrophic}. Rehearsal prevented that collapse, but
+preventing collapse is not improvement.
+
+\subsection{Diagnosis: Search Quality Versus Target Quality}
+
+A natural hypothesis is that search is too weak to teach the network. It was
+tested by playing MCTS against the same network's raw policy head at varying
+simulation counts (Figure~\ref{fig:sims}). Search wins comfortably ---
+79\% at only 40 simulations --- so the hypothesis is false.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/sims_scaling.pdf}
+\caption{MCTS against the network's own greedy policy. Search is clearly
+stronger than the raw policy even at 40 simulations, so the
+\emph{argmax} of the search is a good move; the upper axis shows why the
+\emph{distribution} is nonetheless a poor target.}
+\label{fig:sims}
+\end{figure}
+
+The distinction matters. Equation~\eqref{eq:azloss} trains on the full visit
+distribution $\pi$, not on its argmax. With 40 simulations spread over
+roughly 30 legal moves, $\pi$ is a histogram of about 1.3 visits
+per move: its mode is informative, its shape is sampling noise. Fitting a
+sharp supervised policy to that noise flattens it.
+
+A second, independent defect compounded this. A mirror augmentation flipped
+board files on half of every minibatch but did not exchange the kingside and
+queenside castling planes. After a file flip the king stands on \texttt{d1}
+while the kingside-castling plane remains set --- a position that cannot
+arise in chess, paired with features contradicting the pieces. Chess is not
+mirror-symmetric, precisely because castling and pawn direction break the
+symmetry; roughly half of every batch, including the rehearsal slice, was
+corrupted.
+
+\subsection{Corrected Pipeline}
+
+Four changes were made: castling-aware augmentation (positions retaining
+castling rights are not mirrored), 128 simulations instead of 40
+($\approx 4.3$ visits per legal move), 80 gradient steps per iteration
+instead of 200, and a reduced learning rate.
+
+The decisive change is \emph{acceptance gating}, following
+AlphaGo~Zero~\cite{silver2017alphagozero}: self-play always generates from
+the best weights so far, and updated weights are promoted only after scoring
+at least 55\% in a head-to-head match against the incumbent. Under
+gating the deployed model cannot get worse; the worst case is that nothing is
+promoted.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/v7_progress.pdf}
+\caption{The corrected run. Each gate point plots the candidate's score
+against the incumbent (markers) and against the frozen pretrained network
+(line). The dashed line is equal strength.}
+\label{fig:v7}
+\end{figure}
+
+Under corrected scoring the model measures 90\% against a random
+opponent, against the 50\% the defective metric had reported
+throughout. Final outcomes of the corrected run are summarised in
+Table~\ref{tab:v7}.
+
+\begin{table}[t]
+\centering
+\caption{Corrected run: outcome summary.}
+\label{tab:v7}
+\begin{tabular}{lr}
+\toprule
+Quantity & Value \\
+\midrule
+Iterations completed             & \textsc{[pending]} \\
+Gate matches / promotions        & \textsc{[pending]} \\
+Final score vs.\ frozen baseline & \textsc{[pending]} \\
+Final score vs.\ random opponent & \textsc{[pending]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%======================================================================
+\section{Discussion}
+\label{sec:discussion}
+%======================================================================
+
+\noindent\textbf{Optimisation success is not task success.}
+The single most transferable lesson is that a monotonically decreasing loss
+curve coexisted with a model getting steadily worse at the task. The loss in
+Equation~\eqref{eq:azloss} is computed against targets the model itself
+produced; minimising it measures agreement with those targets, not chess
+strength. Any self-supervised or self-training pipeline shares this
+structure, and therefore shares this failure mode.
+
+\noindent\textbf{A broken metric is worse than no metric.}
+The evaluation defect was costly not because it was subtle but because it was
+\emph{reassuring}. It reported 50\%, a plausible-looking number, for
+159 consecutive measurements spanning two multi-hour runs. A metric
+that returns a plausible constant is more dangerous than one that crashes.
+The symmetric tallies were visible in every log line and were read as evenly
+matched play rather than as the signature of a bug.
+
+\noindent\textbf{Sample efficiency governs downscaling.}
+The failure was not a shortage of compute in aggregate but its allocation.
+Reducing simulations per move from 800 to 40 preserves the argmax
+of the search while destroying the calibration of its distribution, and
+Equation~\eqref{eq:azloss} consumes the distribution. When downscaling an
+algorithm, the question is not what a parameter does at full scale but which
+statistic of it the loss function actually reads.
+
+\noindent\textbf{Prefer structural guarantees to monitoring.}
+Gating is valuable less because it improves the model than because it
+converts a silent failure into a visible one. A rejected gate is an
+unambiguous, immediate statement that the last ten iterations produced
+nothing. This is a general design preference: make the undesirable outcome
+impossible rather than merely detectable.
+
+\noindent\textbf{Limitations.}
+Gate matches of eight to twelve games have wide confidence intervals; a
+55\% threshold on eight games is a weak test, and a longer match or a
+sequential test would be more reliable. The value head plateaus at an MSE of
+0.73, indicating limited outcome-prediction skill from a single
+position. Finally, absolute strength is not calibrated against a rated
+engine, so results are stated as relative comparisons only.
+
+%======================================================================
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+%======================================================================
+
+A complete AlphaZero-style pipeline was implemented and trained on a single
+desktop machine. Supervised pretraining on 676\,648 Elo-filtered Lichess
+positions produced a 760\,717-parameter network that plays principled
+openings, wins material and finds simple mates, scoring 85\% against a
+random opponent.
+
+The project's substantive contribution is negative and methodological. The
+self-play stage, as originally implemented, degraded the model, and the
+evaluation procedure in use was incapable of detecting this. Correcting the
+metric exposed the regression; controlled experiments isolated two causes,
+one statistical (visit-count histograms too sparse to serve as distributional
+targets) and one representational (an augmentation producing illegal board
+states); and acceptance gating now makes regression structurally impossible.
+
+Future work follows directly from the diagnosis. Batched leaf evaluation and
+subtree reuse would raise simulations per move several-fold at equal
+wall-clock cost, attacking the root cause rather than mitigating it.
+Sequential-probability-ratio testing~\cite{wald1945sprt} would make gate decisions at a stated
+confidence level instead of a fixed threshold on a short match. Calibrating
+against a rated engine such as Stockfish at reduced strength would convert
+relative comparisons into an Elo estimate~\cite{elo1978rating}.
+
+%======================================================================
+\section{Artifacts and Demonstrations}
+%======================================================================
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Code Repository:}
+        \url{https://github.com/realgauravvyas/chess-ai} --- full source for
+        the network, search, both training stages, the dashboard, and the
+        measurement scripts under \texttt{experiments/} that reproduce every
+        number in this report. \texttt{RESULTS.md} records the measured
+        findings and the defects fixed.
+  \item \textbf{Interactive Dashboard:} \texttt{dashboard/server.py} serves a
+        browser interface for playing any checkpoint, inspecting the search's
+        principal variation and move probabilities, and watching training
+        curves live.
+  \item \textbf{Video Demonstration:} \textsc{[URL to be added]}
+\end{itemize}
+
+\noindent
+The presentation follows standard guidance on scientific writing~\cite{gopen1990science}. AI-assisted tools were used for code review, debugging and drafting. All
+experimental results reported here were produced by the author's own runs and
+are reproducible from the linked repository.
+
+\vfill\pagebreak
+{\fontsize{8}{9}\selectfont
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
+}
+
+\end{document}
