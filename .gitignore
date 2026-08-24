@@ -52,3 +52,6 @@ docs/ieee_report/*.log
 docs/ieee_report/[a-e][0-9].log
 docs/ieee_report/build*.log
 docs/ieee_report/bib.log
+
+# Slide/deck build outputs
+docs/chess_ai_slides.pdf

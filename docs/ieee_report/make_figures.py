@@ -24,6 +24,13 @@ plt.rcParams.update({
 BLUE, GREEN, RED, GREY = "#1f4e9c", "#1a7f4b", "#b3352c", "#666666"
 
 
+def save(fig, stem):
+    """Write both the PDF the report embeds and the PNG the slides embed."""
+    fig.savefig(OUT / f"{stem}.pdf")
+    fig.savefig(OUT / f"{stem}.png", dpi=200)
+    plt.close(fig)
+
+
 def parse(path):
     """Pull per-iteration series out of one training log."""
     txt = Path(path).read_text(encoding="utf-8", errors="ignore")
@@ -63,8 +70,7 @@ def fig_sims_scaling():
     ax2.set_xticklabels([f"{s/30.0:.1f}" for s in show], fontsize=7, color=RED)
     ax2.set_xlabel("visits per legal move", fontsize=8, color=RED)
     ax2.grid(False)
-    fig.savefig(OUT / "sims_scaling.pdf")
-    plt.close(fig)
+    save(fig, "sims_scaling")
     print("wrote sims_scaling.pdf")
 
 
@@ -90,8 +96,7 @@ def fig_v5_regression():
     ax2.tick_params(axis="y", labelcolor=RED)
     ax2.grid(False)
     ax1.set_title("v5: loss falls, strength does not", fontsize=9)
-    fig.savefig(OUT / "v5_regression.pdf")
-    plt.close(fig)
+    save(fig, "v5_regression")
     print("wrote v5_regression.pdf")
 
 
@@ -121,8 +126,7 @@ def fig_v7_progress():
     ax.set_ylabel("match score (%)")
     ax.set_title("v7: gated self-play", fontsize=9)
     ax.legend(fontsize=6.5, loc="lower right", framealpha=.9)
-    fig.savefig(OUT / "v7_progress.pdf")
-    plt.close(fig)
+    save(fig, "v7_progress")
     print(f"wrote v7_progress.pdf ({len(base)} baseline pts, {len(gate)} gates)")
 
 
@@ -149,8 +153,7 @@ def fig_pretrain_loss():
     ax.set_ylabel("loss")
     ax.set_title("Supervised pretraining (677k positions)", fontsize=9)
     ax.legend(fontsize=7)
-    fig.savefig(OUT / "pretrain_loss.pdf")
-    plt.close(fig)
+    save(fig, "pretrain_loss")
     print("wrote pretrain_loss.pdf")
 
 
