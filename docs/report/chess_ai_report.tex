@@ -1,0 +1,416 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{titlesec}
+
+\definecolor{codegray}{rgb}{0.55,0.55,0.55}
+\definecolor{codeblue}{rgb}{0.12,0.35,0.7}
+\hypersetup{colorlinks=true, linkcolor=codeblue, urlcolor=codeblue}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  frame=single,
+  rulecolor=\color{codegray},
+  breaklines=true
+}
+
+\title{\vspace{-1.2cm}\textbf{A Small Chess AI:\\Learning Chess from Scratch}
+\thanks{An AlphaZero-style self-play project}
+\\[0.4em]\large Technical Report \& Training Guide}
+\author{Chess AI Project}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This report documents a small, fully self-contained artificial-intelligence
+project whose goal is to \emph{teach a small neural network to play chess}
+using the same recipe that produced AlphaZero: reinforcement learning through
+self-play guided by a Monte Carlo Tree Search (MCTS), accelerated by a short
+phase of \emph{supervised pretraining} on human games. The complete system ---
+neural network, search algorithm, training loop, evaluation, and a browser
+dashboard --- runs on a single desktop machine (CPU + one consumer GPU). We
+explain what the system does, where its data comes from, how training is
+carried out, how the model ``thinks,'' and how long training takes.
+\end{abstract}
+
+\tableofcontents
+
+%======================================================================
+\section{What This Project Is}
+
+\paragraph{Goal.}
+The project trains a compact neural network to play chess without ever being
+given chess knowledge (openings, tactics, or evaluation functions). The only
+inputs are the \emph{rules} of chess (via the python-chess library) and, during
+pretraining, a collection of human chess games. The network learns purely from
+data --- first by imitating humans, then by playing against itself.
+
+\paragraph{Why a ``small'' model?}
+A deliberately small network is used so that all training, search, and playing
+fits comfortably on one consumer machine. The default architecture has
+approximately \textbf{760,000 parameters} (compare: AlphaZero used hundreds of
+millions). This keeps every self-play game a few seconds long and makes an
+overnight training run feasible.
+
+\paragraph{Deliverables.}
+\begin{itemize}
+  \item \texttt{model.py} --- residual policy--value neural network.
+  \item \texttt{mcts.py} --- Monte Carlo Tree Search with PUCT exploration.
+  \item \texttt{selfplay.py} --- parallel self-play game generation.
+  \item \texttt{pretrain\_supervised.py} --- supervised training on human games.
+  \item \texttt{train.py} --- main reinforcement-learning loop.
+  \item \texttt{dashboard/} --- a Flask web dashboard to play against the model
+        and watch training metrics live.
+\end{itemize}
+
+%======================================================================
+\section{How Data Is Collected and Which Dataset Is Used}
+
+\subsection{Supervised phase (human data)}
+\begin{itemize}
+  \item \textbf{Source:} the Lichess open database
+        (\url{https://database.lichess.org/}).
+  \item \textbf{Files used:} five monthly dumps of \emph{standard, rated} games
+        (January--May 2013), stored as compressed PGN (\texttt{.pgn.zst});
+        about 90\,MB compressed in total.
+  \item \textbf{Quality filter:} only games where \emph{both} players are
+        rated at least 1750 Elo are kept, so the network imitates competent
+        play rather than average play.
+  \item \textbf{Examples extracted:} approximately \textbf{900\,000}
+        board positions, each with the move that a human actually played and
+        the final game result.
+  \item \textbf{Rehearsal anchor:} a random subset of 40\,000 supervised
+        positions is stored alongside the model and permanently mixed into
+        every later self-play minibatch (Section~\ref{sec:v4}).
+\end{itemize}
+
+\paragraph{Preprocessing.}
+Each position is encoded as an $18\times8\times8$ tensor of binary planes
+(Section~\ref{sec:repr}). Each human move is mapped to one of $4672$ integer
+action labels, and the game outcome is converted to a target value in
+$\{-1,0,+1\}$ from the perspective of the side to move.
+
+\paragraph{Novelty/curriculum data.}
+The same PGN files are mined for ``rare opening positions'' --- 3000 positions
+taken a few moves into games. Self-play games are allowed to start from these
+positions 85\% of the time, so the network explores the vast space of chess
+positions that pure self-play from the initial position would almost never
+visit. This is a distinctive feature of this project: the reinforcement agent
+is \emph{seeded with positions discovered by humans}.
+
+\subsection{Reinforcement phase (self-generated data)}
+Once the network has a basic grasp of chess, it plays games \emph{against
+itself}. No external data is used; the positions and outcomes are generated by
+the network's own search. Each self-play game yields, for every move, the board
+position, the search's move-probability distribution (policy target), and the
+final game result (value target). These experience tuples are stored in a
+replay buffer of up to 100\,000 positions.
+
+%======================================================================
+\section{Board Representation and Move Encoding}
+\label{sec:repr}
+
+\subsection{Input: 18 binary planes}
+The board is encoded as $18$ planes of $8\times8$ bits:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Planes & Meaning \\
+\midrule
+$0$--$5$   & White pieces: pawn, knight, bishop, rook, queen, king \\
+$6$--$11$  & Black pieces: same order \\
+$12$--$15$ & Castling rights (W-K, W-Q, B-K, B-Q) \\
+$16$       & En-passant target square \\
+$17$       & Side to move (all ones if White to move) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Output: 4672 actions}
+Each square is associated with 73 move types:
+\begin{itemize}
+  \item $56$ ``queen-style'' moves: 8 directions $\times$ 7 distances;
+  \item $8$ knight moves;
+  \item $9$ under-promotions (knight, bishop, rook $\times$ 3 directions).
+\end{itemize}
+Hence the policy head outputs a probability distribution over
+$64\times73=4672$ actions. This is the same encoding used by Leela Chess Zero.
+
+%======================================================================
+\section{Architecture: A Residual Policy--Value Network}
+
+The model is a convolutional residual network (like a mini-Leela):
+\begin{itemize}
+  \item Input convolution: $18\rightarrow64$ channels ($3\times3$).
+  \item Ten residual blocks ($64$ channels), each with two $3\times3$ convolutions
+        and batch normalization.
+  \item \emph{Policy head:} a $1\times1$ convolution to 73 channels, reshaped
+        to 4672 logits.
+  \item \emph{Value head:} a $1\times1$ convolution to 1 channel, a fully
+        connected layer to 64 units, then a single scalar through $\tanh$,
+        estimating the expected outcome in $[-1,1]$ from the side-to-move's
+        perspective.
+\end{itemize}
+Total trainable parameters: \textbf{760,717}. The two heads are trained
+jointly (multi-task): the value head learns \emph{who is winning}, the policy
+head learns \emph{which moves are good}.
+
+%======================================================================
+\section{How the AI Works: Monte Carlo Tree Search}
+
+The network alone is not a player; it is a \emph{sensor} that evaluates
+positions and suggests moves. It becomes a player when wrapped in a Monte
+Carlo Tree Search (MCTS). MCTS repeatedly simulates future lines of play in
+four phases:
+
+\begin{enumerate}
+  \item \textbf{Selection.} Starting at the root position, the search descends
+        the tree choosing, at each node, the child with the best UCB score
+        (PUCT):
+        \[
+        U(s,a)=Q(s,a)\;+\;c_{\mathrm{puct}}\,
+        P(s,a)\,\frac{\sqrt{N(s)}}{1+N(s,a)},
+        \]
+        where $Q$ is the child's mean value, $P$ is the network's prior
+        probability for the move, and $N$ counts visits. This balances
+        \emph{exploitation} (high $Q$) and \emph{exploration} (high prior,
+        few visits).
+  \item \textbf{Expansion.} At a leaf, the network evaluates the position and
+        produces $(p,v)$: a move distribution and a value estimate. Child nodes
+        are created with priors $p$.
+  \item \textbf{Evaluation.} If the leaf is a terminal position (checkmate,
+        stalemate, etc.), the true result replaces the network estimate.
+  \item \textbf{Backpropagation.} The value is propagated up the tree, with the
+        sign flipped at every ply (zero-sum game), updating visit counts and
+        running value sums.
+\end{enumerate}
+
+After, say, 100--200 simulations, the move is chosen by the \emph{visit count}
+distribution at the root --- in effect, the search has ``thought ahead'' using
+the network as a guide.
+
+\subsection{Search enhancements used}
+\begin{itemize}
+  \item \textbf{Dirichlet noise} at the root during self-play, to force
+        exploration and avoid repetitive games.
+  \item \textbf{Temperature}: early in self-play games moves are sampled
+        (temperature 1), later the best move is chosen deterministically.
+  \item \textbf{Principal variation} (PV): the dashboard displays the model's
+        planned line of play.
+\end{itemize}
+
+%======================================================================
+\section{How Training Is Done}
+
+The project uses a two-stage training pipeline.
+
+\subsection{Stage 1: Supervised pretraining (imitation)}
+The network is trained on the $\approx$800\,000 human positions. For each
+example the losses are:
+\[
+\mathcal{L}_{\mathrm{pol}}=-\log p_{\theta}(m \mid s),
+\qquad
+\mathcal{L}_{\mathrm{val}}=\big(v_{\theta}(s)-z\big)^2,
+\qquad
+\mathcal{L}=\mathcal{L}_{\mathrm{pol}}+\mathcal{L}_{\mathrm{val}}.
+\]
+Optimizer: Adam, cosine learning-rate schedule $10^{-3}\rightarrow10^{-4}$.
+This stage gives the network immediate chess sense --- it opens with
+\texttt{e4}/\texttt{d4}, develops pieces, and avoids gross blunders --- in a
+few minutes on a GPU.
+
+\subsection{Stage 2: Self-play reinforcement learning (improvement)}
+The AlphaZero loop repeats:
+\begin{enumerate}
+  \item \textbf{Self-play:} the current network (with MCTS) plays games against
+        itself, possibly starting from human-curriculum positions. Each move
+        records the position and the MCTS visit distribution $\pi$.
+  \item \textbf{Training:} a minibatch is drawn from the replay buffer and the
+        network is updated with the AlphaZero loss:
+        \[
+        \mathcal{L}=\mathbb{E}_{s}\Big[
+          -\pi^\top\log p_{\theta}(s)\;+\;\big(v_{\theta}(s)-z\big)^2
+        \Big]+\lambda\|\theta\|^2.
+        \]
+  \item \textbf{Evaluation:} every few iterations the network is tested against
+        a baseline (a greedy policy opponent) to monitor improvement.
+\end{enumerate}
+
+\subsection{Data augmentation}
+Chess is symmetric across the vertical axis. With probability $1/2$ each
+training position is \emph{mirrored} (files $a\leftrightarrow h$), doubling the
+effective dataset and the variety of positions the network sees.
+
+%======================================================================
+\section{How Long Does Training Take?}
+
+\subsection{Measured throughput (current, pipelined run)}
+On the project's machine (Intel i5-12400F, 6 cores/12 threads; NVIDIA RTX 3060),
+with self-play overlapped on GPU training:
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+Stage & Cost & Wall-clock \\
+\midrule
+Download \& parallel parse (5 PGN files) & 5 CPU cores & $\approx 2$ min \\
+Supervised pretraining (900k pos., 3 epochs, GPU) & GPU & $\approx 3$ min \\
+One pipelined iteration (12 games $\parallel$ 200 grad.\ steps) & CPU$+$GPU & $\approx 45$--$55$ s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Budget for the current run}
+The current run fine-tunes from the freshly pretrained model with a reduced
+learning rate ($3\times10^{-4}$) for 300 polish iterations (iterations
+$201$--$500$ of the loop):
+\[
+300 \text{ iterations} \times \approx 47\,\text{s} \approx 3.9 \text{ hours}.
+\]
+End to end --- download, parsing, pretraining, and fine-tuning ---
+the whole improvement cycle completes in roughly \textbf{4.5--5 hours},
+comfortably inside a single day.
+
+\subsection{Why so little data can still make it play}
+The pretrained model already plays sensible openings because it imitated
+hundreds of thousands of human positions. Self-play then refines it on
+positions and plans that humans rarely reach. The result is a \emph{beginner
+to club-player strength} engine: clearly better than random, coherent in
+openings and tactics, but far from engines like Stockfish (which use enormous
+networks, terabytes of self-play, and far more search). Strength can be scaled
+up simply by training longer, searching more simulations per move, and using a
+larger network.
+
+%======================================================================
+\section{Current Work: The v4 Improvement Round}
+\label{sec:v4}
+
+\subsection{Diagnosis that motivated this round}
+After the first full fine-tune (500 self-play iterations), head-to-head play
+against its own pretrained starting point ended in an even score --- but
+inspection revealed a subtle regression: the fine-tuned model opened with
+weak moves (e.g.\ \texttt{1.f3}), while the pretrained model chose mainline
+openings (\texttt{1.e4}/\texttt{1.d4}). This is \emph{catastrophic
+forgetting}: noisy low-search self-play targets gradually overwrote the clean
+supervised knowledge.
+
+\subsection{Changes implemented}
+\begin{enumerate}
+  \item \textbf{Elo-filtered imitation data.} Only games with both players
+        rated $\geq 1750$ are used; dataset expanded from 2 to 5 monthly dumps
+        ($800$k $\rightarrow$ $900$k positions of noticeably better quality).
+  \item \textbf{Longer pretraining.} Three epochs instead of two. The policy
+        cross-entropy loss dropped from $\approx 2.35$ to $\approx 2.06$ ---
+        a direct, measurable gain in move-prediction quality.
+  \item \textbf{Anchor rehearsal (anti-forgetting).} 30\% of every training
+        minibatch is now drawn permanently from a frozen set of 40\,000 human
+        positions. Self-play can still teach novelty, but it can no longer
+        erase what the model already knows.
+  \item \textbf{Gentle polish phase.} Fine-tuning now runs at learning rate
+        $3\times10^{-4}$ (one third of before) for 300 iterations ---
+        enough to adapt, not enough to bulldoze.
+  \item \textbf{Human-curriculum openings.} Self-play games start (85\% of
+        the time) from 3\,000 rare positions mined from the same human games,
+        exposing the agent to plans far outside mainstream theory.
+\end{enumerate}
+
+\subsection{Engineering: using CPU and GPU simultaneously}
+\begin{itemize}
+  \item \textbf{Pipelined loop.} While the GPU performs iteration $N$'s
+        gradient steps, the six CPU worker processes already play iteration
+        $N{+}1$'s games. Neither processor idles; wall-clock per iteration
+        fell from $\approx 70$\,s to $\approx 47$\,s ($\approx 33$\% faster).
+        Self-play uses weights one iteration stale --- a standard, harmless
+        relaxation.
+  \item \textbf{Parallel parsing.} The five PGN files are decompressed and
+        parsed in five simultaneous processes instead of one after another.
+  \item \textbf{cuDNN autotuning} for the fixed-size convolution workload.
+\end{itemize}
+
+%======================================================================
+\section{Expected Impact}
+
+\begin{center}
+\begin{tabular}{p{5.6cm}p{4.1cm}p{4.6cm}}
+\toprule
+Change & Mechanism & Expected effect \\
+\midrule
+Elo-filtered data & imitate stronger moves only & fewer bad habits learned;
+openings and tactics match competent play \\
+Anchor rehearsal & supervised loss never disappears & opening quality is
+preserved through self-play (directly fixes the \texttt{1.f3} regression) \\
+Lower fine-tune LR & small weight updates & retains pretrained skill while
+still adapting \\
+Curriculum openings & diverse starting positions & broader positional
+experience; less overfitting to one mainline \\
+Mirror augmentation & every position teaches twice & effectively doubled
+supervised data at zero cost \\
+Pipelining & no processor idles & $\approx$40\% shorter wall-clock for the
+same amount of learning \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+In short: the previous round proved the pipeline works end to end; this round
+makes the training \emph{faster} (pipelining), the data \emph{better}
+(Elo filter), and the result \emph{stable} (rehearsal). The measurable
+indicators to watch are the pretraining policy loss (already improved from
+${\approx}2.35$ to ${\approx}2.06$) and, on the dashboard, whether opening
+play remains principled (\texttt{e4}/\texttt{d4}) throughout self-play rather
+than degrading.
+
+%======================================================================
+\section{Playing with the Model}
+
+\begin{itemize}
+  \item \textbf{Browser dashboard} (\texttt{dashboard/server.py}):
+        http://127.0.0.1:5000 --- play with the mouse, see the model's
+        principal variation and top moves, browse checkpoints, and run
+        evaluations.
+  \item \textbf{Teach-me loop}: after you play a game, the model can
+        \emph{fine-tune on your own moves}, becoming a personal opponent that
+        adapts to your style.
+  \item \textbf{Terminal play} (\texttt{play.py}): type UCI moves such as
+        \texttt{e2e4}.
+\end{itemize}
+
+%======================================================================
+\section{Reproducing the Project}
+
+\begin{lstlisting}[language=bash]
+# setup
+python -m venv .venv
+.venv\Scripts\activate            # Windows
+pip install -r requirements.txt
+
+# pretrain on human games (GPU optional, ~5 min)
+python pretrain_supervised.py
+
+# self-play fine-tune (resumes from the pretrained model)
+python run_training.py 6 --device auto --iterations 700
+
+# dashboard
+python dashboard\server.py        # then open http://127.0.0.1:5000
+\end{lstlisting}
+
+\begin{thebibliography}{9}
+\bibitem{alpha} Silver, D. et al. ``Mastering Chess and Shogi by Self-Play with
+  a General Reinforcement Learning Algorithm'' (AlphaZero), \emph{Science},
+  2018.
+\bibitem{lc0} Leela Chess Zero: \url{https://lczero.org}.
+\bibitem{lichess} Lichess open database: \url{https://database.lichess.org}.
+\bibitem{pythonchess} python-chess library: \url{https://python-chess.readthedocs.io}.
+\end{thebibliography}
+
+\end{document}
