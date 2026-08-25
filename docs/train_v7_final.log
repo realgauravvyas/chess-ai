@@ -1,0 +1,544 @@
+[wrapper] attempt 1: resuming from iter_200.pt
+Resumed from iteration 201
+Device: cuda | Parameters: 760,717
+Config(planes=18, filters=64, res_blocks=10, policy_size=4672, num_simulations=128, c_puct=1.5, dirichlet_alpha=0.3, dirichlet_epsilon=0.25, games_per_iteration=12, temperature_moves=20, max_game_length=400, batch_size=128, train_steps=80, learning_rate=0.0002, weight_decay=0.0001, lr_min=0.0001, anchor_fraction=0.3, replay_buffer_size=100000, num_iterations=400, checkpoint_interval=5, eval_games=10, opening_curriculum=True, opening_seeds_file='data/opening_seeds.json')
+Baseline for reporting: D:/Internship 3/chess-ai/checkpoints_v7_baseline/iter_200.pt
+Gating ON: promote at >=55% over 8 games @ 80 sims, every 10 iterations
+Self-play: 6 parallel workers
+[iter 201] self-play: 1563 positions (buffer 1563) in 166.4s
+[pipeline] self-play overlaps GPU training (self-play weights lag one iteration)
+[anchor] rehearsal active: 40000 supervised samples mixed into batches
+[iter 201] train: 80 steps, avg loss 2.5601 (lr 2.00e-04) in 15.3s
+[iter 202] self-play: 1789 positions (buffer 3352) in 227.5s
+[iter 202] train: 80 steps, avg loss 2.4978 (lr 2.00e-04) in 5.6s
+[iter 203] self-play: 1270 positions (buffer 4622) in 119.6s
+[iter 203] train: 80 steps, avg loss 2.4983 (lr 2.00e-04) in 5.8s
+[iter 204] self-play: 1542 positions (buffer 6164) in 132.4s
+[iter 204] train: 80 steps, avg loss 2.4979 (lr 2.00e-04) in 5.6s
+[iter 204] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 204] saved checkpoints/iter_205.pt
+[iter 205] self-play: 1404 positions (buffer 7568) in 0.0s
+[iter 205] train: 80 steps, avg loss 2.5494 (lr 2.00e-04) in 6.0s
+[iter 206] self-play: 1361 positions (buffer 8929) in 130.0s
+[iter 206] train: 80 steps, avg loss 2.5233 (lr 2.00e-04) in 6.9s
+[iter 207] self-play: 1520 positions (buffer 10449) in 142.0s
+[iter 207] train: 80 steps, avg loss 2.5330 (lr 2.00e-04) in 5.9s
+[iter 208] self-play: 1687 positions (buffer 12136) in 135.7s
+[iter 208] train: 80 steps, avg loss 2.5176 (lr 2.00e-04) in 5.3s
+[iter 209] self-play: 1629 positions (buffer 13765) in 161.9s
+[iter 209] train: 80 steps, avg loss 2.4938 (lr 2.00e-04) in 6.0s
+[iter 209] gate: candidate 43.8% vs best (iter 201) -> rejected in 213s
+[iter 209] vs baseline: 50.0% in 110s
+[iter 209] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 209] saved checkpoints/iter_210.pt
+[iter 210] self-play: 1780 positions (buffer 15545) in 0.0s
+[iter 210] train: 80 steps, avg loss 2.5207 (lr 2.00e-04) in 5.4s
+[iter 211] self-play: 1616 positions (buffer 17161) in 170.6s
+[iter 211] train: 80 steps, avg loss 2.5250 (lr 2.00e-04) in 5.8s
+[iter 212] self-play: 1229 positions (buffer 18390) in 112.3s
+[iter 212] train: 80 steps, avg loss 2.5367 (lr 2.00e-04) in 6.2s
+[iter 213] self-play: 1578 positions (buffer 19968) in 174.0s
+[iter 213] train: 80 steps, avg loss 2.5152 (lr 2.00e-04) in 6.5s
+[iter 214] self-play: 1683 positions (buffer 21651) in 203.7s
+[iter 214] train: 80 steps, avg loss 2.5214 (lr 2.00e-04) in 6.0s
+[iter 214] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 214] saved checkpoints/iter_215.pt
+[iter 215] self-play: 1692 positions (buffer 23343) in 3.3s
+[iter 215] train: 80 steps, avg loss 2.5121 (lr 2.00e-04) in 5.8s
+[iter 216] self-play: 1339 positions (buffer 24682) in 130.5s
+[iter 216] train: 80 steps, avg loss 2.5245 (lr 2.00e-04) in 5.9s
+[iter 217] self-play: 1636 positions (buffer 26318) in 146.1s
+[iter 217] train: 80 steps, avg loss 2.5023 (lr 2.00e-04) in 5.7s
+[iter 218] self-play: 1485 positions (buffer 27803) in 147.3s
+[iter 218] train: 80 steps, avg loss 2.5101 (lr 2.00e-04) in 6.2s
+[iter 219] self-play: 2009 positions (buffer 29812) in 240.0s
+[iter 219] train: 80 steps, avg loss 2.5053 (lr 1.99e-04) in 5.8s
+[iter 219] gate: candidate 43.8% vs best (iter 201) -> rejected in 214s
+[iter 219] vs baseline: 12.5% in 149s
+[iter 219] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 219] saved checkpoints/iter_220.pt
+[iter 220] self-play: 1373 positions (buffer 31185) in 0.0s
+[iter 220] train: 80 steps, avg loss 2.5114 (lr 1.99e-04) in 5.8s
+[iter 221] self-play: 1870 positions (buffer 33055) in 177.6s
+[iter 221] train: 80 steps, avg loss 2.5210 (lr 1.99e-04) in 6.1s
+[iter 222] self-play: 1846 positions (buffer 34901) in 182.2s
+[iter 222] train: 80 steps, avg loss 2.4920 (lr 1.99e-04) in 6.5s
+[iter 223] self-play: 1257 positions (buffer 36158) in 133.9s
+[iter 223] train: 80 steps, avg loss 2.5139 (lr 1.99e-04) in 7.0s
+[iter 224] self-play: 1613 positions (buffer 37771) in 226.3s
+[iter 224] persisted replay buffer (37771 positions)
+[iter 224] train: 80 steps, avg loss 2.5238 (lr 1.99e-04) in 5.9s
+[iter 224] eval vs random: {'win': 6, 'loss': 0, 'draw': 4} (score 80%)
+[iter 224] saved checkpoints/iter_225.pt
+[iter 225] self-play: 1118 positions (buffer 38889) in 0.0s
+[iter 225] train: 80 steps, avg loss 2.5201 (lr 1.99e-04) in 6.5s
+[iter 226] self-play: 1405 positions (buffer 40294) in 173.1s
+[iter 226] train: 80 steps, avg loss 2.5001 (lr 1.99e-04) in 6.1s
+[iter 227] self-play: 1923 positions (buffer 42217) in 231.5s
+[iter 227] train: 80 steps, avg loss 2.5088 (lr 1.99e-04) in 6.5s
+[iter 228] self-play: 1660 positions (buffer 43877) in 243.9s
+[iter 228] train: 80 steps, avg loss 2.5090 (lr 1.99e-04) in 7.3s
+[iter 229] self-play: 1584 positions (buffer 45461) in 217.3s
+[iter 229] train: 80 steps, avg loss 2.5065 (lr 1.99e-04) in 8.3s
+[iter 229] gate: candidate 56.2% vs best (iter 230) -> PROMOTED in 283s
+[iter 229] vs baseline: 50.0% in 192s
+[iter 229] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 229] saved checkpoints/iter_230.pt
+[iter 230] self-play: 1630 positions (buffer 47091) in 0.0s
+[iter 230] train: 80 steps, avg loss 2.4980 (lr 1.99e-04) in 6.8s
+[iter 231] self-play: 1457 positions (buffer 48548) in 203.9s
+[iter 231] train: 80 steps, avg loss 2.5029 (lr 1.99e-04) in 7.8s
+[iter 232] self-play: 1132 positions (buffer 49680) in 109.9s
+[iter 232] train: 80 steps, avg loss 2.4975 (lr 1.98e-04) in 6.1s
+[iter 233] self-play: 1311 positions (buffer 50991) in 145.5s
+[iter 233] train: 80 steps, avg loss 2.4879 (lr 1.98e-04) in 6.2s
+[iter 234] self-play: 1451 positions (buffer 52442) in 162.3s
+[iter 234] train: 80 steps, avg loss 2.5082 (lr 1.98e-04) in 6.2s
+[iter 234] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 234] saved checkpoints/iter_235.pt
+[iter 235] self-play: 1207 positions (buffer 53649) in 0.0s
+[iter 235] train: 80 steps, avg loss 2.4919 (lr 1.98e-04) in 6.0s
+[iter 236] self-play: 1358 positions (buffer 55007) in 130.9s
+[iter 236] train: 80 steps, avg loss 2.4920 (lr 1.98e-04) in 6.2s
+[iter 237] self-play: 1544 positions (buffer 56551) in 170.8s
+[iter 237] train: 80 steps, avg loss 2.5175 (lr 1.98e-04) in 6.3s
+[iter 238] self-play: 1333 positions (buffer 57884) in 156.9s
+[iter 238] train: 80 steps, avg loss 2.4870 (lr 1.98e-04) in 6.2s
+[iter 239] self-play: 1391 positions (buffer 59275) in 146.8s
+[iter 239] train: 80 steps, avg loss 2.5245 (lr 1.98e-04) in 6.1s
+[iter 239] gate: candidate 50.0% vs best (iter 230) -> rejected in 173s
+[iter 239] vs baseline: 50.0% in 139s
+[iter 239] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 239] saved checkpoints/iter_240.pt
+[iter 240] self-play: 1581 positions (buffer 60856) in 0.0s
+[iter 240] train: 80 steps, avg loss 2.5368 (lr 1.98e-04) in 6.0s
+[iter 241] self-play: 1309 positions (buffer 62165) in 153.2s
+[iter 241] train: 80 steps, avg loss 2.5278 (lr 1.97e-04) in 6.1s
+[iter 242] self-play: 1118 positions (buffer 63283) in 112.3s
+[iter 242] train: 80 steps, avg loss 2.5021 (lr 1.97e-04) in 6.2s
+[iter 243] self-play: 1498 positions (buffer 64781) in 161.5s
+[iter 243] train: 80 steps, avg loss 2.5210 (lr 1.97e-04) in 6.2s
+[iter 244] self-play: 1311 positions (buffer 66092) in 132.8s
+[iter 244] train: 80 steps, avg loss 2.5028 (lr 1.97e-04) in 6.1s
+[iter 244] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 244] saved checkpoints/iter_245.pt
+[iter 245] self-play: 1392 positions (buffer 67484) in 22.1s
+[iter 245] train: 80 steps, avg loss 2.5240 (lr 1.97e-04) in 6.0s
+[iter 246] self-play: 1322 positions (buffer 68806) in 142.6s
+[iter 246] train: 80 steps, avg loss 2.5228 (lr 1.97e-04) in 6.3s
+[iter 247] self-play: 1414 positions (buffer 70220) in 158.8s
+[iter 247] train: 80 steps, avg loss 2.5036 (lr 1.97e-04) in 6.2s
+[iter 248] self-play: 1355 positions (buffer 71575) in 136.0s
+[iter 248] train: 80 steps, avg loss 2.5219 (lr 1.96e-04) in 6.1s
+[iter 249] self-play: 1407 positions (buffer 72982) in 140.3s
+[iter 249] persisted replay buffer (72982 positions)
+[iter 249] train: 80 steps, avg loss 2.5207 (lr 1.96e-04) in 6.3s
+[iter 249] gate: candidate 43.8% vs best (iter 230) -> rejected in 207s
+[iter 249] vs baseline: 25.0% in 139s
+[iter 249] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 249] saved checkpoints/iter_250.pt
+[iter 250] self-play: 1420 positions (buffer 74402) in 0.0s
+[iter 250] train: 80 steps, avg loss 2.5284 (lr 1.96e-04) in 6.1s
+[iter 251] self-play: 1154 positions (buffer 75556) in 115.0s
+[iter 251] train: 80 steps, avg loss 2.5007 (lr 1.96e-04) in 6.1s
+[iter 252] self-play: 1331 positions (buffer 76887) in 128.0s
+[iter 252] train: 80 steps, avg loss 2.5140 (lr 1.96e-04) in 6.1s
+[iter 253] self-play: 1244 positions (buffer 78131) in 112.6s
+[iter 253] train: 80 steps, avg loss 2.5260 (lr 1.96e-04) in 6.2s
+[iter 254] self-play: 1333 positions (buffer 79464) in 129.4s
+[iter 254] train: 80 steps, avg loss 2.5232 (lr 1.96e-04) in 6.0s
+[iter 254] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 254] saved checkpoints/iter_255.pt
+[iter 255] self-play: 1267 positions (buffer 80731) in 0.0s
+[iter 255] train: 80 steps, avg loss 2.5217 (lr 1.95e-04) in 6.2s
+[iter 256] self-play: 1199 positions (buffer 81930) in 130.7s
+[iter 256] train: 80 steps, avg loss 2.5278 (lr 1.95e-04) in 6.2s
+[iter 257] self-play: 1605 positions (buffer 83535) in 172.0s
+[iter 257] train: 80 steps, avg loss 2.5125 (lr 1.95e-04) in 6.0s
+[iter 258] self-play: 1423 positions (buffer 84958) in 141.5s
+[iter 258] train: 80 steps, avg loss 2.5017 (lr 1.95e-04) in 6.2s
+[iter 259] self-play: 1352 positions (buffer 86310) in 160.4s
+[iter 259] train: 80 steps, avg loss 2.4883 (lr 1.95e-04) in 6.2s
+[iter 259] gate: candidate 62.5% vs best (iter 260) -> PROMOTED in 208s
+[iter 259] vs baseline: 31.2% in 123s
+[iter 259] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 259] saved checkpoints/iter_260.pt
+[iter 260] self-play: 1413 positions (buffer 87723) in 0.0s
+[iter 260] train: 80 steps, avg loss 2.5003 (lr 1.95e-04) in 6.0s
+[iter 261] self-play: 1298 positions (buffer 89021) in 127.4s
+[iter 261] train: 80 steps, avg loss 2.5037 (lr 1.94e-04) in 6.1s
+[iter 262] self-play: 1392 positions (buffer 90413) in 155.9s
+[iter 262] train: 80 steps, avg loss 2.5369 (lr 1.94e-04) in 6.2s
+[iter 263] self-play: 1346 positions (buffer 91759) in 124.6s
+[iter 263] train: 80 steps, avg loss 2.5120 (lr 1.94e-04) in 6.1s
+[iter 264] self-play: 1416 positions (buffer 93175) in 137.2s
+[iter 264] train: 80 steps, avg loss 2.5199 (lr 1.94e-04) in 6.2s
+[iter 264] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 264] saved checkpoints/iter_265.pt
+[iter 265] self-play: 1387 positions (buffer 94562) in 13.8s
+[iter 265] train: 80 steps, avg loss 2.5009 (lr 1.94e-04) in 6.2s
+[iter 266] self-play: 1473 positions (buffer 96035) in 158.1s
+[iter 266] train: 80 steps, avg loss 2.5108 (lr 1.93e-04) in 6.1s
+[iter 267] self-play: 1207 positions (buffer 97242) in 120.7s
+[iter 267] train: 80 steps, avg loss 2.5154 (lr 1.93e-04) in 6.2s
+[iter 268] self-play: 1224 positions (buffer 98466) in 133.3s
+[iter 268] train: 80 steps, avg loss 2.5097 (lr 1.93e-04) in 6.1s
+[iter 269] self-play: 1378 positions (buffer 99844) in 175.8s
+[iter 269] train: 80 steps, avg loss 2.5258 (lr 1.93e-04) in 6.2s
+[iter 269] gate: candidate 37.5% vs best (iter 260) -> rejected in 205s
+[iter 269] vs baseline: 50.0% in 156s
+[iter 269] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 269] saved checkpoints/iter_270.pt
+[iter 270] self-play: 1456 positions (buffer 100000) in 0.0s
+[iter 270] train: 80 steps, avg loss 2.4814 (lr 1.93e-04) in 6.1s
+[iter 271] self-play: 1227 positions (buffer 100000) in 109.9s
+[iter 271] train: 80 steps, avg loss 2.5008 (lr 1.92e-04) in 6.1s
+[iter 272] self-play: 1459 positions (buffer 100000) in 167.5s
+[iter 272] train: 80 steps, avg loss 2.4909 (lr 1.92e-04) in 6.2s
+[iter 273] self-play: 1342 positions (buffer 100000) in 131.8s
+[iter 273] train: 80 steps, avg loss 2.5332 (lr 1.92e-04) in 6.1s
+[iter 274] self-play: 1116 positions (buffer 100000) in 105.2s
+[iter 274] persisted replay buffer (100000 positions)
+[iter 274] train: 80 steps, avg loss 2.5169 (lr 1.92e-04) in 6.2s
+[iter 274] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 274] saved checkpoints/iter_275.pt
+[iter 275] self-play: 1445 positions (buffer 100000) in 0.0s
+[iter 275] train: 80 steps, avg loss 2.5253 (lr 1.92e-04) in 5.9s
+[iter 276] self-play: 1388 positions (buffer 100000) in 140.0s
+[iter 276] train: 80 steps, avg loss 2.5124 (lr 1.91e-04) in 6.3s
+[iter 277] self-play: 1444 positions (buffer 100000) in 143.9s
+[iter 277] train: 80 steps, avg loss 2.5010 (lr 1.91e-04) in 6.3s
+[iter 278] self-play: 1549 positions (buffer 100000) in 157.0s
+[iter 278] train: 80 steps, avg loss 2.5136 (lr 1.91e-04) in 6.3s
+[iter 279] self-play: 1237 positions (buffer 100000) in 110.1s
+[iter 279] train: 80 steps, avg loss 2.5323 (lr 1.91e-04) in 6.2s
+[iter 279] gate: candidate 75.0% vs best (iter 280) -> PROMOTED in 207s
+[iter 279] vs baseline: 68.8% in 107s
+[iter 279] eval vs random: {'win': 6, 'loss': 0, 'draw': 4} (score 80%)
+[iter 279] saved checkpoints/iter_280.pt
+[iter 280] self-play: 1465 positions (buffer 100000) in 0.0s
+[iter 280] train: 80 steps, avg loss 2.5244 (lr 1.90e-04) in 6.0s
+[iter 281] self-play: 1170 positions (buffer 100000) in 115.8s
+[iter 281] train: 80 steps, avg loss 2.5151 (lr 1.90e-04) in 6.1s
+[iter 282] self-play: 1312 positions (buffer 100000) in 135.0s
+[iter 282] train: 80 steps, avg loss 2.5390 (lr 1.90e-04) in 6.3s
+[iter 283] self-play: 1494 positions (buffer 100000) in 151.1s
+[iter 283] train: 80 steps, avg loss 2.5099 (lr 1.90e-04) in 6.2s
+[iter 284] self-play: 1080 positions (buffer 100000) in 114.3s
+[iter 284] train: 80 steps, avg loss 2.5305 (lr 1.90e-04) in 6.2s
+[iter 284] eval vs random: {'win': 10, 'loss': 0, 'draw': 0} (score 100%)
+[iter 284] saved checkpoints/iter_285.pt
+[iter 285] self-play: 1485 positions (buffer 100000) in 0.0s
+[iter 285] train: 80 steps, avg loss 2.5445 (lr 1.89e-04) in 6.0s
+[iter 286] self-play: 1360 positions (buffer 100000) in 152.8s
+[iter 286] train: 80 steps, avg loss 2.5386 (lr 1.89e-04) in 6.2s
+[iter 287] self-play: 1310 positions (buffer 100000) in 155.0s
+[iter 287] train: 80 steps, avg loss 2.5240 (lr 1.89e-04) in 6.2s
+[iter 288] self-play: 1440 positions (buffer 100000) in 151.1s
+[iter 288] train: 80 steps, avg loss 2.5316 (lr 1.89e-04) in 6.2s
+[iter 289] self-play: 1411 positions (buffer 100000) in 146.8s
+[iter 289] train: 80 steps, avg loss 2.5392 (lr 1.88e-04) in 6.1s
+[iter 289] gate: candidate 56.2% vs best (iter 290) -> PROMOTED in 194s
+[iter 289] vs baseline: 50.0% in 129s
+[iter 289] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 289] saved checkpoints/iter_290.pt
+[iter 290] self-play: 1148 positions (buffer 100000) in 0.0s
+[iter 290] train: 80 steps, avg loss 2.5490 (lr 1.88e-04) in 6.0s
+[iter 291] self-play: 1501 positions (buffer 100000) in 164.7s
+[iter 291] train: 80 steps, avg loss 2.5328 (lr 1.88e-04) in 6.1s
+[iter 292] self-play: 1377 positions (buffer 100000) in 133.4s
+[iter 292] train: 80 steps, avg loss 2.5448 (lr 1.88e-04) in 6.1s
+[iter 293] self-play: 1318 positions (buffer 100000) in 120.4s
+[iter 293] train: 80 steps, avg loss 2.5121 (lr 1.87e-04) in 6.0s
+[iter 294] self-play: 1370 positions (buffer 100000) in 122.8s
+[iter 294] train: 80 steps, avg loss 2.5311 (lr 1.87e-04) in 6.1s
+[iter 294] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 294] saved checkpoints/iter_295.pt
+[iter 295] self-play: 1419 positions (buffer 100000) in 46.2s
+[iter 295] train: 80 steps, avg loss 2.5402 (lr 1.87e-04) in 6.1s
+[iter 296] self-play: 1355 positions (buffer 100000) in 133.8s
+[iter 296] train: 80 steps, avg loss 2.5406 (lr 1.86e-04) in 6.3s
+[iter 297] self-play: 1328 positions (buffer 100000) in 125.6s
+[iter 297] train: 80 steps, avg loss 2.5614 (lr 1.86e-04) in 6.1s
+[iter 298] self-play: 1726 positions (buffer 100000) in 175.4s
+[iter 298] train: 80 steps, avg loss 2.5500 (lr 1.86e-04) in 6.2s
+[iter 299] self-play: 1572 positions (buffer 100000) in 158.7s
+[iter 299] persisted replay buffer (100000 positions)
+[iter 299] train: 80 steps, avg loss 2.5393 (lr 1.86e-04) in 6.2s
+[iter 299] gate: candidate 37.5% vs best (iter 290) -> rejected in 190s
+[iter 299] vs baseline: 37.5% in 152s
+[iter 299] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 299] saved checkpoints/iter_300.pt
+[iter 300] self-play: 1202 positions (buffer 100000) in 0.0s
+[iter 300] train: 80 steps, avg loss 2.5556 (lr 1.85e-04) in 5.9s
+[iter 301] self-play: 1545 positions (buffer 100000) in 140.6s
+[iter 301] train: 80 steps, avg loss 2.5574 (lr 1.85e-04) in 6.0s
+[iter 302] self-play: 1229 positions (buffer 100000) in 132.5s
+[iter 302] train: 80 steps, avg loss 2.5440 (lr 1.85e-04) in 6.2s
+[iter 303] self-play: 1234 positions (buffer 100000) in 126.9s
+[iter 303] train: 80 steps, avg loss 2.5511 (lr 1.85e-04) in 6.1s
+[iter 304] self-play: 1414 positions (buffer 100000) in 136.6s
+[iter 304] train: 80 steps, avg loss 2.5519 (lr 1.84e-04) in 5.9s
+[iter 304] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 304] saved checkpoints/iter_305.pt
+[iter 305] self-play: 1132 positions (buffer 100000) in 0.0s
+[iter 305] train: 80 steps, avg loss 2.5443 (lr 1.84e-04) in 5.8s
+[iter 306] self-play: 1486 positions (buffer 100000) in 135.3s
+[iter 306] train: 80 steps, avg loss 2.5559 (lr 1.84e-04) in 5.7s
+[iter 307] self-play: 1165 positions (buffer 100000) in 113.9s
+[iter 307] train: 80 steps, avg loss 2.5449 (lr 1.83e-04) in 5.8s
+[iter 308] self-play: 1243 positions (buffer 100000) in 122.5s
+[iter 308] train: 80 steps, avg loss 2.5575 (lr 1.83e-04) in 5.9s
+[iter 309] self-play: 1085 positions (buffer 100000) in 97.2s
+[iter 309] train: 80 steps, avg loss 2.5395 (lr 1.83e-04) in 6.0s
+[iter 309] gate: candidate 68.8% vs best (iter 310) -> PROMOTED in 173s
+[iter 309] vs baseline: 37.5% in 108s
+[iter 309] eval vs random: {'win': 6, 'loss': 0, 'draw': 4} (score 80%)
+[iter 309] saved checkpoints/iter_310.pt
+[iter 310] self-play: 1255 positions (buffer 100000) in 0.0s
+[iter 310] train: 80 steps, avg loss 2.5358 (lr 1.82e-04) in 5.6s
+[iter 311] self-play: 1522 positions (buffer 100000) in 144.7s
+[iter 311] train: 80 steps, avg loss 2.5368 (lr 1.82e-04) in 6.0s
+[iter 312] self-play: 1386 positions (buffer 100000) in 139.9s
+[iter 312] train: 80 steps, avg loss 2.5501 (lr 1.82e-04) in 5.9s
+[iter 313] self-play: 1127 positions (buffer 100000) in 114.7s
+[iter 313] train: 80 steps, avg loss 2.5307 (lr 1.82e-04) in 5.9s
+[iter 314] self-play: 1092 positions (buffer 100000) in 97.3s
+[iter 314] train: 80 steps, avg loss 2.5418 (lr 1.81e-04) in 5.8s
+[iter 314] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 314] saved checkpoints/iter_315.pt
+[iter 315] self-play: 1274 positions (buffer 100000) in 0.0s
+[iter 315] train: 80 steps, avg loss 2.5418 (lr 1.81e-04) in 6.0s
+[iter 316] self-play: 1411 positions (buffer 100000) in 126.7s
+[iter 316] train: 80 steps, avg loss 2.5425 (lr 1.81e-04) in 5.8s
+[iter 317] self-play: 1653 positions (buffer 100000) in 160.0s
+[iter 317] train: 80 steps, avg loss 2.5396 (lr 1.80e-04) in 6.1s
+[iter 318] self-play: 1515 positions (buffer 100000) in 134.8s
+[iter 318] train: 80 steps, avg loss 2.5377 (lr 1.80e-04) in 5.4s
+[iter 319] self-play: 1394 positions (buffer 100000) in 112.8s
+[iter 319] train: 80 steps, avg loss 2.5502 (lr 1.80e-04) in 5.8s
+[iter 319] gate: candidate 43.8% vs best (iter 310) -> rejected in 218s
+[iter 319] vs baseline: 37.5% in 120s
+[iter 319] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 319] saved checkpoints/iter_320.pt
+[iter 320] self-play: 1528 positions (buffer 100000) in 0.0s
+[iter 320] train: 80 steps, avg loss 2.5304 (lr 1.79e-04) in 5.2s
+[iter 321] self-play: 1151 positions (buffer 100000) in 89.8s
+[iter 321] train: 80 steps, avg loss 2.5329 (lr 1.79e-04) in 5.6s
+[iter 322] self-play: 1381 positions (buffer 100000) in 124.8s
+[iter 322] train: 80 steps, avg loss 2.5389 (lr 1.79e-04) in 7.6s
+[iter 323] self-play: 1194 positions (buffer 100000) in 200.8s
+[iter 323] train: 80 steps, avg loss 2.5418 (lr 1.78e-04) in 6.9s
+[iter 324] self-play: 1540 positions (buffer 100000) in 156.2s
+[iter 324] persisted replay buffer (100000 positions)
+[iter 324] train: 80 steps, avg loss 2.5412 (lr 1.78e-04) in 6.8s
+[iter 324] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 324] saved checkpoints/iter_325.pt
+[iter 325] self-play: 1325 positions (buffer 100000) in 0.0s
+[iter 325] train: 80 steps, avg loss 2.5351 (lr 1.78e-04) in 6.3s
+[iter 326] self-play: 1140 positions (buffer 100000) in 126.1s
+[iter 326] train: 80 steps, avg loss 2.5079 (lr 1.77e-04) in 6.5s
+[iter 327] self-play: 1210 positions (buffer 100000) in 126.3s
+[iter 327] train: 80 steps, avg loss 2.5359 (lr 1.77e-04) in 6.6s
+[iter 328] self-play: 1430 positions (buffer 100000) in 199.2s
+[iter 328] train: 80 steps, avg loss 2.5270 (lr 1.77e-04) in 6.5s
+[iter 329] self-play: 1186 positions (buffer 100000) in 162.6s
+[iter 329] train: 80 steps, avg loss 2.5307 (lr 1.76e-04) in 6.9s
+[iter 329] gate: candidate 37.5% vs best (iter 310) -> rejected in 240s
+[iter 329] vs baseline: 50.0% in 189s
+[iter 329] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 329] saved checkpoints/iter_330.pt
+[iter 330] self-play: 1565 positions (buffer 100000) in 0.0s
+[iter 330] train: 80 steps, avg loss 2.5223 (lr 1.76e-04) in 6.6s
+[iter 331] self-play: 1359 positions (buffer 100000) in 166.5s
+[iter 331] train: 80 steps, avg loss 2.5213 (lr 1.76e-04) in 7.0s
+[iter 332] self-play: 1287 positions (buffer 100000) in 156.0s
+[iter 332] train: 80 steps, avg loss 2.5230 (lr 1.75e-04) in 7.0s
+[iter 333] self-play: 1373 positions (buffer 100000) in 149.6s
+[iter 333] train: 80 steps, avg loss 2.5113 (lr 1.75e-04) in 5.9s
+[iter 334] self-play: 1390 positions (buffer 100000) in 131.1s
+[iter 334] train: 80 steps, avg loss 2.5221 (lr 1.75e-04) in 5.9s
+[iter 334] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 334] saved checkpoints/iter_335.pt
+[iter 335] self-play: 1138 positions (buffer 100000) in 0.0s
+[iter 335] train: 80 steps, avg loss 2.5138 (lr 1.74e-04) in 6.2s
+[iter 336] self-play: 1113 positions (buffer 100000) in 153.6s
+[iter 336] train: 80 steps, avg loss 2.5338 (lr 1.74e-04) in 6.5s
+[iter 337] self-play: 1439 positions (buffer 100000) in 162.0s
+[iter 337] train: 80 steps, avg loss 2.5262 (lr 1.74e-04) in 6.7s
+[iter 338] self-play: 1267 positions (buffer 100000) in 157.3s
+[iter 338] train: 80 steps, avg loss 2.5301 (lr 1.73e-04) in 6.6s
+[iter 339] self-play: 1320 positions (buffer 100000) in 162.7s
+[iter 339] train: 80 steps, avg loss 2.5147 (lr 1.73e-04) in 6.3s
+[iter 339] gate: candidate 56.2% vs best (iter 340) -> PROMOTED in 199s
+[iter 339] vs baseline: 37.5% in 194s
+[iter 339] eval vs random: {'win': 10, 'loss': 0, 'draw': 0} (score 100%)
+[iter 339] saved checkpoints/iter_340.pt
+[iter 340] self-play: 1431 positions (buffer 100000) in 0.0s
+[iter 340] train: 80 steps, avg loss 2.5331 (lr 1.73e-04) in 6.6s
+[iter 341] self-play: 958 positions (buffer 100000) in 117.6s
+[iter 341] train: 80 steps, avg loss 2.5236 (lr 1.72e-04) in 6.5s
+[iter 342] self-play: 1393 positions (buffer 100000) in 171.8s
+[iter 342] train: 80 steps, avg loss 2.5117 (lr 1.72e-04) in 6.6s
+[iter 343] self-play: 1336 positions (buffer 100000) in 151.8s
+[iter 343] train: 80 steps, avg loss 2.5204 (lr 1.72e-04) in 6.5s
+[iter 344] self-play: 1360 positions (buffer 100000) in 167.7s
+[iter 344] train: 80 steps, avg loss 2.5065 (lr 1.71e-04) in 6.5s
+[iter 344] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 344] saved checkpoints/iter_345.pt
+[iter 345] self-play: 1301 positions (buffer 100000) in 0.0s
+[iter 345] train: 80 steps, avg loss 2.4991 (lr 1.71e-04) in 6.4s
+[iter 346] self-play: 1425 positions (buffer 100000) in 148.9s
+[iter 346] train: 80 steps, avg loss 2.4997 (lr 1.71e-04) in 6.7s
+[iter 347] self-play: 1013 positions (buffer 100000) in 135.0s
+[iter 347] train: 80 steps, avg loss 2.5071 (lr 1.70e-04) in 6.5s
+[iter 348] self-play: 1326 positions (buffer 100000) in 154.3s
+[iter 348] train: 80 steps, avg loss 2.5075 (lr 1.70e-04) in 6.6s
+[iter 349] self-play: 1410 positions (buffer 100000) in 162.4s
+[iter 349] persisted replay buffer (100000 positions)
+[iter 349] train: 80 steps, avg loss 2.5014 (lr 1.69e-04) in 6.7s
+[iter 349] gate: candidate 31.2% vs best (iter 340) -> rejected in 199s
+[iter 349] vs baseline: 43.8% in 180s
+[iter 349] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 349] saved checkpoints/iter_350.pt
+[iter 350] self-play: 1350 positions (buffer 100000) in 0.0s
+[iter 350] train: 80 steps, avg loss 2.5037 (lr 1.69e-04) in 6.5s
+[iter 351] self-play: 1303 positions (buffer 100000) in 180.2s
+[iter 351] train: 80 steps, avg loss 2.4975 (lr 1.69e-04) in 6.6s
+[iter 352] self-play: 1431 positions (buffer 100000) in 161.7s
+[iter 352] train: 80 steps, avg loss 2.5270 (lr 1.68e-04) in 6.6s
+[iter 353] self-play: 1187 positions (buffer 100000) in 184.7s
+[iter 353] train: 80 steps, avg loss 2.5020 (lr 1.68e-04) in 6.6s
+[iter 354] self-play: 1163 positions (buffer 100000) in 118.5s
+[iter 354] train: 80 steps, avg loss 2.5135 (lr 1.68e-04) in 6.5s
+[iter 354] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 354] saved checkpoints/iter_355.pt
+[iter 355] self-play: 1312 positions (buffer 100000) in 0.0s
+[iter 355] train: 80 steps, avg loss 2.5068 (lr 1.67e-04) in 6.3s
+[iter 356] self-play: 1266 positions (buffer 100000) in 147.0s
+[iter 356] train: 80 steps, avg loss 2.5008 (lr 1.67e-04) in 6.5s
+[iter 357] self-play: 1429 positions (buffer 100000) in 175.6s
+[iter 357] train: 80 steps, avg loss 2.4980 (lr 1.67e-04) in 6.6s
+[iter 358] self-play: 1299 positions (buffer 100000) in 168.3s
+[iter 358] train: 80 steps, avg loss 2.5079 (lr 1.66e-04) in 6.6s
+[iter 359] self-play: 1429 positions (buffer 100000) in 167.7s
+[iter 359] train: 80 steps, avg loss 2.4997 (lr 1.66e-04) in 6.6s
+[iter 359] gate: candidate 50.0% vs best (iter 340) -> rejected in 203s
+[iter 359] vs baseline: 43.8% in 146s
+[iter 359] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 359] saved checkpoints/iter_360.pt
+[iter 360] self-play: 1196 positions (buffer 100000) in 0.0s
+[iter 360] train: 80 steps, avg loss 2.4716 (lr 1.65e-04) in 6.3s
+[iter 361] self-play: 1259 positions (buffer 100000) in 144.4s
+[iter 361] train: 80 steps, avg loss 2.4805 (lr 1.65e-04) in 6.7s
+[iter 362] self-play: 1285 positions (buffer 100000) in 148.0s
+[iter 362] train: 80 steps, avg loss 2.4895 (lr 1.65e-04) in 6.6s
+[iter 363] self-play: 1397 positions (buffer 100000) in 163.6s
+[iter 363] train: 80 steps, avg loss 2.5180 (lr 1.64e-04) in 6.6s
+[iter 364] self-play: 1243 positions (buffer 100000) in 154.5s
+[iter 364] train: 80 steps, avg loss 2.4747 (lr 1.64e-04) in 6.6s
+[iter 364] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 364] saved checkpoints/iter_365.pt
+[iter 365] self-play: 1315 positions (buffer 100000) in 0.0s
+[iter 365] train: 80 steps, avg loss 2.4958 (lr 1.64e-04) in 6.3s
+[iter 366] self-play: 1581 positions (buffer 100000) in 199.5s
+[iter 366] train: 80 steps, avg loss 2.4955 (lr 1.63e-04) in 6.8s
+[iter 367] self-play: 1348 positions (buffer 100000) in 193.0s
+[iter 367] train: 80 steps, avg loss 2.4903 (lr 1.63e-04) in 6.6s
+[iter 368] self-play: 1408 positions (buffer 100000) in 157.6s
+[iter 368] train: 80 steps, avg loss 2.4907 (lr 1.62e-04) in 6.6s
+[iter 369] self-play: 1330 positions (buffer 100000) in 129.8s
+[iter 369] train: 80 steps, avg loss 2.4680 (lr 1.62e-04) in 5.8s
+[iter 369] gate: candidate 50.0% vs best (iter 340) -> rejected in 205s
+[iter 369] vs baseline: 37.5% in 110s
+[iter 369] eval vs random: {'win': 9, 'loss': 0, 'draw': 1} (score 95%)
+[iter 369] saved checkpoints/iter_370.pt
+[iter 370] self-play: 1478 positions (buffer 100000) in 0.0s
+[iter 370] train: 80 steps, avg loss 2.4842 (lr 1.62e-04) in 5.2s
+[iter 371] self-play: 1574 positions (buffer 100000) in 139.3s
+[iter 371] train: 80 steps, avg loss 2.5019 (lr 1.61e-04) in 5.4s
+[iter 372] self-play: 1274 positions (buffer 100000) in 113.0s
+[iter 372] train: 80 steps, avg loss 2.4699 (lr 1.61e-04) in 5.2s
+[iter 373] self-play: 1432 positions (buffer 100000) in 118.3s
+[iter 373] train: 80 steps, avg loss 2.4724 (lr 1.61e-04) in 5.3s
+[iter 374] self-play: 1330 positions (buffer 100000) in 107.1s
+[iter 374] persisted replay buffer (100000 positions)
+[iter 374] train: 80 steps, avg loss 2.4896 (lr 1.60e-04) in 5.2s
+[iter 374] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 374] saved checkpoints/iter_375.pt
+[iter 375] self-play: 1391 positions (buffer 100000) in 0.0s
+[iter 375] train: 80 steps, avg loss 2.4655 (lr 1.60e-04) in 5.1s
+[iter 376] self-play: 1459 positions (buffer 100000) in 125.5s
+[iter 376] train: 80 steps, avg loss 2.5112 (lr 1.59e-04) in 5.4s
+[iter 377] self-play: 1403 positions (buffer 100000) in 125.7s
+[iter 377] train: 80 steps, avg loss 2.4659 (lr 1.59e-04) in 5.2s
+[iter 378] self-play: 1347 positions (buffer 100000) in 122.0s
+[iter 378] train: 80 steps, avg loss 2.4761 (lr 1.59e-04) in 5.3s
+[iter 379] self-play: 1276 positions (buffer 100000) in 100.0s
+[iter 379] train: 80 steps, avg loss 2.4686 (lr 1.58e-04) in 5.4s
+[iter 379] gate: candidate 68.8% vs best (iter 380) -> PROMOTED in 157s
+[iter 379] vs baseline: 56.2% in 142s
+[iter 379] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 379] saved checkpoints/iter_380.pt
+[iter 380] self-play: 933 positions (buffer 100000) in 0.0s
+[iter 380] train: 80 steps, avg loss 2.4531 (lr 1.58e-04) in 5.1s
+[iter 381] self-play: 1346 positions (buffer 100000) in 117.6s
+[iter 381] train: 80 steps, avg loss 2.4662 (lr 1.57e-04) in 5.5s
+[iter 382] self-play: 1247 positions (buffer 100000) in 104.8s
+[iter 382] train: 80 steps, avg loss 2.4752 (lr 1.57e-04) in 5.3s
+[iter 383] self-play: 1370 positions (buffer 100000) in 117.3s
+[iter 383] train: 80 steps, avg loss 2.4713 (lr 1.57e-04) in 5.3s
+[iter 384] self-play: 1073 positions (buffer 100000) in 91.1s
+[iter 384] train: 80 steps, avg loss 2.4653 (lr 1.56e-04) in 5.3s
+[iter 384] eval vs random: {'win': 2, 'loss': 0, 'draw': 8} (score 60%)
+[iter 384] saved checkpoints/iter_385.pt
+[iter 385] self-play: 1485 positions (buffer 100000) in 0.0s
+[iter 385] train: 80 steps, avg loss 2.4538 (lr 1.56e-04) in 5.2s
+[iter 386] self-play: 1306 positions (buffer 100000) in 116.5s
+[iter 386] train: 80 steps, avg loss 2.4626 (lr 1.55e-04) in 5.5s
+[iter 387] self-play: 1505 positions (buffer 100000) in 122.7s
+[iter 387] train: 80 steps, avg loss 2.4832 (lr 1.55e-04) in 5.5s
+[iter 388] self-play: 1177 positions (buffer 100000) in 106.1s
+[iter 388] train: 80 steps, avg loss 2.4615 (lr 1.55e-04) in 5.5s
+[iter 389] self-play: 1285 positions (buffer 100000) in 111.3s
+[iter 389] train: 80 steps, avg loss 2.4669 (lr 1.54e-04) in 5.4s
+[iter 389] gate: candidate 50.0% vs best (iter 380) -> rejected in 169s
+[iter 389] vs baseline: 43.8% in 133s
+[iter 389] eval vs random: {'win': 6, 'loss': 0, 'draw': 4} (score 80%)
+[iter 389] saved checkpoints/iter_390.pt
+[iter 390] self-play: 1203 positions (buffer 100000) in 0.0s
+[iter 390] train: 80 steps, avg loss 2.4738 (lr 1.54e-04) in 5.4s
+[iter 391] self-play: 1313 positions (buffer 100000) in 121.6s
+[iter 391] train: 80 steps, avg loss 2.4740 (lr 1.54e-04) in 5.5s
+[iter 392] self-play: 1186 positions (buffer 100000) in 90.5s
+[iter 392] train: 80 steps, avg loss 2.4628 (lr 1.53e-04) in 5.4s
+[iter 393] self-play: 1052 positions (buffer 100000) in 87.5s
+[iter 393] train: 80 steps, avg loss 2.4763 (lr 1.53e-04) in 5.5s
+[iter 394] self-play: 1486 positions (buffer 100000) in 123.8s
+[iter 394] train: 80 steps, avg loss 2.4486 (lr 1.52e-04) in 5.5s
+[iter 394] eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+[iter 394] saved checkpoints/iter_395.pt
+[iter 395] self-play: 1172 positions (buffer 100000) in 0.0s
+[iter 395] train: 80 steps, avg loss 2.4555 (lr 1.52e-04) in 5.1s
+[iter 396] self-play: 1439 positions (buffer 100000) in 112.8s
+[iter 396] train: 80 steps, avg loss 2.4593 (lr 1.52e-04) in 5.3s
+[iter 397] self-play: 1453 positions (buffer 100000) in 115.3s
+[iter 397] train: 80 steps, avg loss 2.4637 (lr 1.51e-04) in 5.3s
+[iter 398] self-play: 1184 positions (buffer 100000) in 93.6s
+[iter 398] train: 80 steps, avg loss 2.4686 (lr 1.51e-04) in 5.3s
+[iter 399] self-play: 1501 positions (buffer 100000) in 129.6s
+[iter 399] persisted replay buffer (100000 positions)
+[iter 399] train: 80 steps, avg loss 2.4734 (lr 1.50e-04) in 5.5s
+[iter 399] gate: candidate 56.2% vs best (iter 400) -> PROMOTED in 168s
+[iter 399] vs baseline: 31.2% in 139s
+[iter 399] eval vs random: {'win': 7, 'loss': 0, 'draw': 3} (score 85%)
+[iter 399] saved checkpoints/iter_400.pt
+[iter 399] persisted replay buffer (101191 positions)
+[curriculum] loaded 6000 opening seed positions
+[curriculum] loaded 6000 opening seed positions
+[curriculum] loaded 6000 opening seed positions
+[curriculum] loaded 6000 opening seed positions
+[curriculum] loaded 6000 opening seed positions
+[curriculum] loaded 6000 opening seed positions
+Training complete.
+[wrapper] training completed successfully.

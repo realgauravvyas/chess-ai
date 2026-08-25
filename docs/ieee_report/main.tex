@@ -24,8 +24,8 @@ and Gated Self-Play Reinforcement Learning}
 \name{Gaurav Vyas (Roll Number: 23035010370)}
 
 \address{
-Internship / Term Project Report\\
-Trimester 9, Project 3\\[0.5em]
+Term Project Report\\
+Trimester 9\\[0.5em]
 B.Sc. (Honours) Data Science and Artificial Intelligence\\
 Indian Institute of Technology Guwahati, India\\
 \texttt{g.vyas@op.iitg.ac.in}
@@ -52,8 +52,11 @@ own starting point ($2.5$ to $5.5$ over eight games) even as training loss
 fell monotonically. Two root causes were identified and fixed: policy
 targets formed from 40-visit search histograms are dominated by
 sampling noise, and a mirror data-augmentation step was generating
-physically impossible board states. A corrected pipeline adds acceptance
-gating, which makes regression structurally impossible.
+physically impossible board states. A corrected pipeline adds acceptance gating: over 199 further
+iterations the gated model measured 46.2\% against its frozen starting point
+(95\% CI 37.4--55.1, indistinguishable) while the candidate stream it was
+trained from averaged 42.2\% ($p=0.004$). Gating prevented the regression
+without producing improvement; the residual barrier is sample efficiency.
 \end{abstract}
 
 \begin{keywords}
@@ -74,12 +77,11 @@ domain-specific heuristics. The recipe is attractive from a data-science
 standpoint because it is a closed loop: the model generates its own training
 distribution, and improvements compound.
 
-That closed loop is also its central risk. When a model manufactures its own
-labels, errors are not merely tolerated but amplified, and the usual
-supervised-learning safety net --- a held-out set whose labels are known to
-be correct --- does not exist. The quantity a practitioner actually cares
-about, playing strength, is not the quantity being minimised, and the two can
-move in opposite directions without any warning appearing in the loss curve.
+That closed loop is also its central risk. When a model manufactures
+its own labels there is no held-out set whose labels are known to be correct,
+and the quantity one cares about --- playing strength --- is not the quantity
+being minimised. The two can move in opposite directions with no warning in
+the loss curve.
 
 This project reproduces the AlphaZero recipe at a scale that fits on a single
 desktop machine, and then subjects it to the measurement discipline that
@@ -107,8 +109,7 @@ learn the value of a position and the plausibility of a move entirely from
 data.
 
 The scale constraint is not incidental. AlphaZero used 5000 TPUs and
-800 MCTS simulations per move; this project has roughly six orders of
-magnitude less compute. The interesting question is therefore not whether the
+800 simulations per move. The question here is therefore not whether the
 recipe reaches grandmaster strength, but \emph{which parts of it survive
 aggressive downscaling} --- and how one would know.
 
@@ -174,11 +175,9 @@ incrementally rather than materialised, since a single month exceeds
 available memory when expanded.
 
 Quality filtering is applied at the game level: only games in which
-\emph{both} players are rated at least 1750 Elo are retained, so that
-the network imitates competent rather than average play. This filter is
-aggressive --- it admits roughly 12\% of games --- and it is the main
-reason the final corpus is 676\,648 positions drawn from approximately
-9600 games rather than the 80\,000 games read.
+\emph{both} players are rated at least 1750 Elo are retained. This admits
+roughly 12\% of games, giving a corpus of 676\,648 positions from about
+9600 games out of the 80\,000 read.
 
 Each retained position yields one training example: an $18\times8\times8$
 tensor, the index of the move the human actually played, and the game outcome
@@ -212,9 +211,8 @@ and a value head ($1\times1$ convolution to one channel, a fully connected
 layer to 64 units, and a scalar through $\tanh$). Total trainable
 parameters: 760\,717.
 
-The two heads share the trunk, so the model is trained multi-task: the value
-head learns \emph{who is winning} while the policy head learns \emph{which
-moves are plausible}, and the shared representation must serve both.
+The heads share the trunk, so a single representation must serve both
+\emph{who is winning} and \emph{which moves are plausible}.
 
 \subsection{Stage 1: Supervised Pretraining}
 
@@ -234,25 +232,23 @@ tree by the PUCT rule~\cite{rosin2011puct}
 \begin{equation}
 U(s,a) = Q(s,a) + c_{\text{puct}}\,P(s,a)\,\frac{\sqrt{N(s)}}{1+N(s,a)},
 \end{equation}
-where $Q$ is the mean value of the child, $P$ the network prior and $N$ the
-visit count. Leaves are evaluated by the network; terminal positions use the
-true result. Dirichlet noise is added at the root during self-play only.
-
+where $Q$ is the child's mean value, $P$ the network prior and $N$ the
+visit count. Leaves are evaluated by the network, terminal positions by the
+true result, and Dirichlet noise is added at the root during self-play only.
 The normalised visit distribution $\pi$ becomes the policy target and the
-game result $z$ the value target, giving the AlphaZero loss
+result $z$ the value target, giving the AlphaZero loss
 \begin{equation}
 \L = \mathbb{E}_{s}\Big[-\pi^{\top}\log p_{\theta}(s)
       + \big(v_{\theta}(s)-z\big)^2\Big] + \lambda\lVert\theta\rVert^2 .
 \label{eq:azloss}
 \end{equation}
 
-Two additions guard against catastrophic forgetting~\cite{mccloskey1989catastrophic} of the supervised knowledge; the first is rehearsal on a frozen exemplar set~\cite{rebuffi2017icarl}: 30\%
-of every minibatch is drawn from the frozen rehearsal anchor, and self-play
-games start from curriculum positions 85\% of the time.
-
-Self-play runs in six CPU worker processes while gradient steps run on the
-GPU, overlapped so that neither device idles; self-play therefore uses
-weights one iteration stale, a standard relaxation.
+Two additions guard against catastrophic
+forgetting~\cite{mccloskey1989catastrophic}, the first being rehearsal on a
+frozen exemplar set~\cite{rebuffi2017icarl}: 30\% of every minibatch comes
+from the anchor, and self-play games start from curriculum positions 85\% of
+the time. Self-play runs in six CPU workers overlapped with GPU training, so
+self-play weights lag one iteration --- a standard relaxation.
 
 \subsection{Evaluation Methodology}
 \label{sec:evalmethod}
@@ -262,20 +258,18 @@ measured by playing games. Three properties are required for such a
 measurement to carry information:
 
 \begin{enumerate}[noitemsep]
-  \item \textbf{Correct attribution.} A match result must be scored from the
-        \emph{network's} perspective. If the network alternates colours and
-        results are tallied as raw PGN strings, every win as Black is
-        recorded as a loss.
+  \item \textbf{Correct attribution.} Score from the \emph{network's}
+        perspective: if it alternates colours and results are tallied as raw
+        PGN strings, every win as Black counts as a loss.
   \item \textbf{Independent games.} Two deterministic players replay one
-        identical game. An $N$-game match between deterministic agents
-        contains one game of information unless openings are randomised.
-  \item \textbf{An informative opponent.} A fixed, frozen reference opponent
-        measures progress; an opponent that improves alongside the model
-        measures nothing.
+        identical game, so an $N$-game match carries one game of information
+        unless openings are randomised.
+  \item \textbf{An informative opponent.} A frozen reference measures
+        progress; one that improves alongside the model measures nothing.
 \end{enumerate}
 
-All three were violated in the original implementation. Their restoration is
-what makes Section~\ref{sec:results} interpretable.
+All three were violated originally; their restoration is what makes
+Section~\ref{sec:results} interpretable.
 
 %======================================================================
 \section{Experiments and Results}
@@ -283,35 +277,31 @@ what makes Section~\ref{sec:results} interpretable.
 %======================================================================
 
 \subsection{Experimental Setup}
-All experiments ran on an Intel i5-12400F (six cores, twelve threads) with an
-NVIDIA RTX 3060, in PyTorch~2.13~\cite{paszke2019pytorch} with \texttt{python-chess}~\cite{pythonchess} for rules.
-Self-play is CPU-bound (single-threaded Python MCTS); the GPU serves only
-batched gradient steps, so low GPU utilisation during training is expected
-rather than symptomatic. Measured throughput at twelve games per iteration on
-six workers is 42\,s at 40 simulations and 180\,s
-at 128.
+All experiments ran on an Intel i5-12400F (6C/12T) with an NVIDIA RTX
+3060, in PyTorch~2.13~\cite{paszke2019pytorch} with
+\texttt{python-chess}~\cite{pythonchess}. Self-play is CPU-bound, the GPU
+serving only batched gradient steps, so low GPU utilisation is expected.
+Throughput at twelve games per iteration on six workers is 42\,s at 40
+simulations, 180\,s at 128.
 
 \subsection{Supervised Pretraining}
 Policy cross-entropy fell from 3.90 to 2.06 over three epochs
-(Figure~\ref{fig:pretrain}). A cross-entropy of 2.06 over 4672
-actions corresponds to assigning roughly 13\% probability to the move a
-strong human actually chose, against a uniform-over-legal-moves baseline near
-3.4.
+(Figure~\ref{fig:pretrain}) --- roughly 13\% probability on the move a strong
+human actually chose, against a uniform-over-legal-moves baseline near 3.4.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/pretrain_loss.pdf}
+\includegraphics[width=0.70\linewidth]{figures/pretrain_loss.pdf}
 \caption{Supervised stage. Policy cross-entropy converges to $\approx 2.06$;
 value MSE plateaus near 0.73, reflecting the intrinsic difficulty of
 predicting a game outcome from a single mid-game position.}
 \label{fig:pretrain}
 \end{figure}
 
-Behavioural probes confirm the loss reflects real chess competence: from the
-initial position the network's raw policy assigns 0.594 to \texttt{e4}
-and 0.313 to \texttt{d4}; it answers \texttt{e4} with \texttt{e5} or
-\texttt{c5}; it captures a hanging queen; and it finds a mate in one. Against
-a uniformly random opponent it scores 85\% over ten games.
+Behavioural probes confirm this reflects real competence: the raw policy
+assigns 0.594 to \texttt{e4} and 0.313 to \texttt{d4}, answers \texttt{e4}
+with \texttt{e5} or \texttt{c5}, captures a hanging queen and finds mate in
+one, scoring 85\% against a random opponent.
 
 \subsection{A Defect in the Evaluation Metric}
 \label{sec:metric}
@@ -346,7 +336,7 @@ the training loss fell monotonically from 2.36 to 1.85
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/v5_regression.pdf}
+\includegraphics[width=0.70\linewidth]{figures/v5_regression.pdf}
 \caption{The v5 run. Training loss (left axis) falls throughout, while the
 reported evaluation score (right axis) is pinned at 50\% by the defect
 of Section~\ref{sec:metric}. Direct head-to-head play shows the model in fact
@@ -369,7 +359,7 @@ simulation counts (Figure~\ref{fig:sims}). Search wins comfortably ---
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/sims_scaling.pdf}
+\includegraphics[width=0.70\linewidth]{figures/sims_scaling.pdf}
 \caption{MCTS against the network's own greedy policy. Search is clearly
 stronger than the raw policy even at 40 simulations, so the
 \emph{argmax} of the search is a good move; the upper axis shows why the
@@ -394,44 +384,59 @@ corrupted.
 
 \subsection{Corrected Pipeline}
 
-Four changes were made: castling-aware augmentation (positions retaining
-castling rights are not mirrored), 128 simulations instead of 40
-($\approx 4.3$ visits per legal move), 80 gradient steps per iteration
-instead of 200, and a reduced learning rate.
+Four changes: castling-aware augmentation (positions retaining castling
+rights are not mirrored), 128 simulations instead of 40 ($\approx4.3$ visits
+per legal move), 80 gradient steps instead of 200, and a lower learning
+rate.
 
-The decisive change is \emph{acceptance gating}, following
-AlphaGo~Zero~\cite{silver2017alphagozero}: self-play always generates from
-the best weights so far, and updated weights are promoted only after scoring
-at least 55\% in a head-to-head match against the incumbent. Under
-gating the deployed model cannot get worse; the worst case is that nothing is
-promoted.
+The decisive change is \emph{acceptance
+gating}~\cite{silver2017alphagozero}: self-play always generates from the
+best weights so far, and updated weights reach the deployed model only after
+scoring at least 55\% against the incumbent.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/v7_progress.pdf}
+\includegraphics[width=0.70\linewidth]{figures/v7_progress.pdf}
 \caption{The corrected run. Each gate point plots the candidate's score
 against the incumbent (markers) and against the frozen pretrained network
 (line). The dashed line is equal strength.}
 \label{fig:v7}
 \end{figure}
 
-Under corrected scoring the model measures 90\% against a random
-opponent, against the 50\% the defective metric had reported
-throughout. Final outcomes of the corrected run are summarised in
-Table~\ref{tab:v7}.
+The run completed 199 iterations, settled by a 40-game match (random
+openings, alternating colours) against the frozen network; at 40 games the
+standard error is 7.9 points, against 17.7 for the eight-game training
+matches (Table~\ref{tab:v7}).
+
+It scored 46.2\% (95\% CI 37.4--55.1, $z=-0.83$): no detectable
+difference from its starting point, with both models beating a random mover
+identically (86.2\% and 87.5\%). Self-play produced no improvement --- but
+nor the regression of Section~\ref{sec:regression}.
+
+The mechanism is visible in the intermediate data: the \emph{candidate}
+network, trained continuously and repeatedly rejected, averaged 42.2\% over
+20 measurements ($z=-2.87$, $p=0.004$). Self-play was still degrading the
+network, and the gate kept that damage out of the deployed weights.
+
+The guarantee is weaker than it appears, however: 8 of 20 gates promoted
+against 7.8 expected under the null of no improvement
+(Section~\ref{sec:discussion}).
 
 \begin{table}[t]
 \centering
-\caption{Corrected run: outcome summary.}
+\caption{Corrected run. Head-to-head figures are 40-game matches with
+randomised openings; intervals are 95\% CIs. Training loss fell
+2.560$\rightarrow$2.473 over 199 iterations.}
 \label{tab:v7}
 \begin{tabular}{lr}
 \toprule
 Quantity & Value \\
 \midrule
-Iterations completed             & \textsc{[pending]} \\
-Gate matches / promotions        & \textsc{[pending]} \\
-Final score vs.\ frozen baseline & \textsc{[pending]} \\
-Final score vs.\ random opponent & \textsc{[pending]} \\
+Gate promotions (noise predicts 7.8) & 8 / 20 \\
+Candidate vs.\ baseline (20 gates)   & 42.2\% ($p=0.004$) \\
+\textbf{Gated model vs.\ baseline}   & \textbf{46.2\%} [37.4, 55.1] \\
+Gated model vs.\ random             & 86.2\% [79.2, 93.3] \\
+Baseline vs.\ random                & 87.5\% [80.7, 94.3] \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -442,93 +447,80 @@ Final score vs.\ random opponent & \textsc{[pending]} \\
 %======================================================================
 
 \noindent\textbf{Optimisation success is not task success.}
-The single most transferable lesson is that a monotonically decreasing loss
-curve coexisted with a model getting steadily worse at the task. The loss in
+A falling loss curve coexisted with a model getting worse at the task.
 Equation~\eqref{eq:azloss} is computed against targets the model itself
-produced; minimising it measures agreement with those targets, not chess
-strength. Any self-supervised or self-training pipeline shares this
-structure, and therefore shares this failure mode.
+produced, so minimising it measures self-agreement, not chess strength. Every
+self-training pipeline shares this structure and this failure mode.
 
 \noindent\textbf{A broken metric is worse than no metric.}
-The evaluation defect was costly not because it was subtle but because it was
-\emph{reassuring}. It reported 50\%, a plausible-looking number, for
-159 consecutive measurements spanning two multi-hour runs. A metric
-that returns a plausible constant is more dangerous than one that crashes.
-The symmetric tallies were visible in every log line and were read as evenly
-matched play rather than as the signature of a bug.
+The defect was costly not because it was subtle but because it was
+\emph{reassuring}: it returned 50\%, a plausible constant, for 159
+consecutive measurements across two multi-hour runs. The symmetric tallies
+were visible in every log line and read as evenly matched play rather than as
+the signature of a bug.
 
 \noindent\textbf{Sample efficiency governs downscaling.}
-The failure was not a shortage of compute in aggregate but its allocation.
-Reducing simulations per move from 800 to 40 preserves the argmax
-of the search while destroying the calibration of its distribution, and
-Equation~\eqref{eq:azloss} consumes the distribution. When downscaling an
-algorithm, the question is not what a parameter does at full scale but which
-statistic of it the loss function actually reads.
+The failure was not a shortage of compute but its allocation: cutting
+simulations from 800 to 40 preserves the argmax while destroying the
+calibration of the distribution, and Equation~\eqref{eq:azloss} consumes the
+distribution. When downscaling, the question is not what a parameter does at
+full scale but which statistic of it the loss actually reads.
 
-\noindent\textbf{Prefer structural guarantees to monitoring.}
-Gating is valuable less because it improves the model than because it
-converts a silent failure into a visible one. A rejected gate is an
-unambiguous, immediate statement that the last ten iterations produced
-nothing. This is a general design preference: make the undesirable outcome
-impossible rather than merely detectable.
+\noindent\textbf{A safeguard is only as good as its test.}
+Gating worked in aggregate --- rejected candidates were significantly worse
+than baseline, the protected model was not --- but individual decisions were
+indistinguishable from chance, an eight-game match resolving nothing at this
+effect size. Having diagnosed one metric that measured nothing, we built a
+safeguard and assumed it worked: the same error one level up.
 
 \noindent\textbf{Limitations.}
-Gate matches of eight to twelve games have wide confidence intervals; a
-55\% threshold on eight games is a weak test, and a longer match or a
-sequential test would be more reliable. The value head plateaus at an MSE of
-0.73, indicating limited outcome-prediction skill from a single
-position. Finally, absolute strength is not calibrated against a rated
-engine, so results are stated as relative comparisons only.
+The value head plateaus at MSE 0.73, and absolute strength is not calibrated
+against a rated engine, so all results are relative comparisons.
 
 %======================================================================
 \section{Conclusion and Future Work}
 \label{sec:conclusion}
 %======================================================================
 
-A complete AlphaZero-style pipeline was implemented and trained on a single
-desktop machine. Supervised pretraining on 676\,648 Elo-filtered Lichess
-positions produced a 760\,717-parameter network that plays principled
-openings, wins material and finds simple mates, scoring 85\% against a
-random opponent.
+Supervised pretraining on 676\,648 Elo-filtered Lichess positions gave a
+760\,717-parameter network that plays principled openings, wins material and
+finds simple mates, scoring 85\% against a random opponent.
 
-The project's substantive contribution is negative and methodological. The
-self-play stage, as originally implemented, degraded the model, and the
-evaluation procedure in use was incapable of detecting this. Correcting the
-metric exposed the regression; controlled experiments isolated two causes,
-one statistical (visit-count histograms too sparse to serve as distributional
-targets) and one representational (an augmentation producing illegal board
-states); and acceptance gating now makes regression structurally impossible.
+The substantive contribution is negative and methodological. Self-play
+as originally implemented degraded the model, and the evaluation procedure
+could not detect it. Correcting the metric exposed the regression; controlled
+experiments isolated one statistical cause (visit histograms too sparse to be
+distributional targets) and one representational cause (an augmentation
+producing illegal boards); and gating held the deployed model level (46.2\%,
+CI 37.4--55.1) while rejected candidates drifted significantly below
+baseline. Self-play at this scale neither helped nor, once gated, hurt. The
+binding constraint is sample efficiency: 128 simulations give 4.3 visits per
+legal move against roughly 27 for AlphaZero.
 
-Future work follows directly from the diagnosis. Batched leaf evaluation and
-subtree reuse would raise simulations per move several-fold at equal
-wall-clock cost, attacking the root cause rather than mitigating it.
-Sequential-probability-ratio testing~\cite{wald1945sprt} would make gate decisions at a stated
-confidence level instead of a fixed threshold on a short match. Calibrating
-against a rated engine such as Stockfish at reduced strength would convert
-relative comparisons into an Elo estimate~\cite{elo1978rating}.
+Future work follows from the diagnosis: batched leaf evaluation and
+subtree reuse would raise simulations several-fold at equal wall-clock cost;
+sequential-probability-ratio testing~\cite{wald1945sprt} would set gate
+decisions at a stated confidence level; and calibration against Stockfish at
+reduced strength would yield an Elo estimate~\cite{elo1978rating}.
 
 %======================================================================
 \section{Artifacts and Demonstrations}
 %======================================================================
 
 \begin{itemize}[noitemsep]
-  \item \textbf{Code Repository:}
-        \url{https://github.com/realgauravvyas/chess-ai} --- full source for
-        the network, search, both training stages, the dashboard, and the
-        measurement scripts under \texttt{experiments/} that reproduce every
-        number in this report. \texttt{RESULTS.md} records the measured
-        findings and the defects fixed.
-  \item \textbf{Interactive Dashboard:} \texttt{dashboard/server.py} serves a
-        browser interface for playing any checkpoint, inspecting the search's
-        principal variation and move probabilities, and watching training
-        curves live.
-  \item \textbf{Video Demonstration:} \textsc{[URL to be added]}
+  \item \textbf{Code:} \url{https://github.com/realgauravvyas/chess-ai}
+        --- network, search, both training stages, dashboard, and the
+        \texttt{experiments/} scripts reproducing every number here.
+        \texttt{RESULTS.md} records the findings and defects fixed.
+  \item \textbf{Dashboard:} \texttt{dashboard/server.py} --- play any
+        checkpoint, inspect the principal variation, watch training live.
+  \item \textbf{Video:} \textsc{[URL to be added]}
 \end{itemize}
 
 \noindent
-The presentation follows standard guidance on scientific writing~\cite{gopen1990science}. AI-assisted tools were used for code review, debugging and drafting. All
-experimental results reported here were produced by the author's own runs and
-are reproducible from the linked repository.
+Presentation follows standard guidance~\cite{gopen1990science}.
+AI-assisted tools aided code review and drafting; all results are the
+author's own and reproducible from the repository.
 
 \vfill\pagebreak
 {\fontsize{8}{9}\selectfont

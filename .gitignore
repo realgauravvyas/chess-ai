@@ -55,3 +55,6 @@ docs/ieee_report/bib.log
 
 # Slide/deck build outputs
 docs/chess_ai_slides.pdf
+
+# keep the final run log as evidence, ignore the rest
+!docs/train_v7_final.log

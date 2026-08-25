@@ -1,10 +1,19 @@
 # YouTube Script — Learning Chess Without Chess Knowledge
 
-**Target length:** 9 minutes 30 seconds
-**Word count:** ~1,350 spoken words (≈145 wpm)
+**Target length:** 10 minutes (trim notes below if you need to come in under)
+**Word count:** ~1,530 spoken words (≈145 wpm)
 **Presenter:** Gaurav Vyas — Trimester 9, Project 3, B.Sc. (Hons) DSAI, IIT Guwahati
 
 Screen directions are in *[italics]*. Everything else is spoken.
+
+> **All numbers are final.** Training finished on 25 Aug 2026 (400
+> iterations). Every figure quoted here — the supervised results, the v5
+> regression, the diagnosis, the 40-game decisive match and the gate audit —
+> is measured and reproducible from `experiments/`.
+>
+> **Note for the dashboard shots:** the `training: LIVE` pill only pulses
+> while a run is in progress. To film it live, start a short run first:
+> `python run_training.py --run-dir runs/demo --seed-from checkpoints_v7_baseline/iter_200.pt 6 --sims 40`
 
 ---
 
@@ -178,7 +187,7 @@ deliberately doesn't use this augmentation, and now I know why.
 
 ---
 
-## 7:50 — 8:50 · The fix
+## 7:50 — 8:40 · The fix
 
 *[On screen: gating diagram]*
 
@@ -197,15 +206,48 @@ promoted.
 Here's a real gate from my run. The candidate scored 43.8%, and it was
 rejected. It never touched the deployed model.
 
-This is the point: under gating, my model **cannot** silently get worse. The
-worst case is that nothing gets promoted, and I find out immediately instead
-of six hours later.
-
-I'd rather make a failure impossible than promise to watch for it.
+The idea is that a bad update can't quietly slip into the deployed model —
+and if nothing gets promoted, I find that out in minutes instead of six
+hours.
 
 ---
 
-## 8:50 — 9:30 · Close
+## 8:40 — 9:20 · The twist: I had to audit my own fix
+
+*[On screen: the final 40-game match result, `46.2%`]*
+
+So after two hundred more iterations, I ran the real test — forty games
+against the model I started from. Forty, not eight, because at eight games
+the error bars swallow the answer.
+
+Forty-six point two percent. Confidence interval thirty-seven to fifty-five.
+**Statistically indistinguishable from where it started.**
+
+Self-play didn't make it better. But compare that to the uncorrected run,
+which scored thirty-one percent against its own starting point — clearly
+worse. The gate turned a real regression into no change. And the candidates
+it kept rejecting? They averaged forty-two percent, p equals zero point
+zero-zero-four. Self-play was still actively damaging the network. The gate
+just kept that damage away from the model I'd actually ship.
+
+*[On screen: `8 / 20 promoted · noise alone predicts 7.8`]*
+
+And then I did to my gate exactly what I should have done to my first metric:
+I checked whether it worked.
+
+Eight promotions out of twenty. Pure chance predicts seven point eight.
+
+My safety mechanism was, statistically, a coin flip. It helped in aggregate,
+but it was nowhere near the guarantee I'd assumed. A gate protects you only
+in proportion to how decisive its test is — and an eight-game match decides
+nothing.
+
+Same mistake as the first bug, one level up: I built a measurement and
+trusted it without checking its resolution.
+
+---
+
+## 9:25 — 10:00 · Close
 
 *[On screen: dashboard, playing a game, eval bar moving]*
 
@@ -216,13 +258,13 @@ So, did I build a strong chess engine? No. It's a beginner. It hangs pieces
 in the endgame.
 
 But that's not really what I got out of this. I got a model that plays real
-openings from 677,000 human positions, a measurement suite that can actually
-detect when training hurts, and one lesson I'll carry into every project
-after this:
+openings from 677,000 human positions, a measurement suite that can detect
+when training hurts, and one lesson I'll carry into every project after this:
 
 **a falling loss curve is not proof that anything is working.** You have to
-measure the thing you actually care about — and you have to check that the
-measurement itself isn't lying to you.
+measure the thing you actually care about — then check that the measurement
+itself isn't lying to you. And when you build something to catch your own
+mistakes, check that too.
 
 Code and full results are linked below. Thanks for watching.
 
@@ -232,8 +274,12 @@ Code and full results are linked below. Thanks for watching.
 
 - **Pace:** ~145 wpm. If you run long, the fastest cut is the encoding detail
   at 1:40–3:00 — trim to just "18 planes in, 4,672 moves out."
-- **Highest-impact visual:** the `2.5 — 5.5` head-to-head result at 6:00.
-  Hold it on screen for a full three seconds.
+- **Highest-impact visuals:** the `2.5 — 5.5` regression at 6:00 and the
+  `8 / 20 promoted · noise predicts 7.8` gate audit at 9:00. Hold each on
+  screen for a full three seconds.
+- **If you must come in under 10:00,** cut the encoding detail at 1:40–3:00
+  down to "18 planes in, 4,672 moves out" — that saves ~50 seconds and costs
+  the least.
 - **Don't rush** the section from 5:30 to 6:40. That's the actual
   contribution of the project and the part an evaluator will care about.
 - Screen-record the dashboard **before** recording audio; the model takes a

@@ -9,6 +9,13 @@ The supervised stage worked well. The self-play stage, as originally
 configured, made the model measurably **weaker** — and the evaluation metric
 in use at the time was incapable of detecting that.
 
+After correcting the metric and two training defects, a second 199-iteration
+run with acceptance gating left the model **statistically indistinguishable**
+from its starting point (46.2%, 95% CI [37.4, 55.1] over 40 games). Gating
+prevented the regression; it did not produce improvement. The candidates the
+gate rejected were significantly worse than baseline (42.2%, p = 0.004), so
+self-play was still degrading the network throughout.
+
 ## 1. The evaluation metric was broken
 
 `evaluate_vs_baseline` alternated the network between white and black but
@@ -110,13 +117,65 @@ new weights are promoted only after scoring ≥55% in an 8-game match.
 Gating makes regression structurally impossible: the worst case is "nothing
 gets promoted and the model stays at baseline strength."
 
-First corrected measurement, iteration 204, with net-perspective scoring:
+The run completed 199 iterations (201 → 399). Its outcome was settled by a
+40-game match with randomised openings and alternating colours — at 40 games
+the standard error is 7.9 points, against 17.7 for the 8-game matches used
+during training.
+
+### The decisive result
 
 ```
-eval vs random: {'win': 8, 'loss': 0, 'draw': 2} (score 90%)
+gated best.pt  vs  frozen pretrained baseline
+  +5  =27  -8      score 46.2%      95% CI [37.4%, 55.1%]
+  z = -0.83   ->   no detectable difference
 ```
 
-<!-- RESULTS-V7-PLACEHOLDER: final gate/baseline table goes here -->
+| Measurement | Result |
+|---|---|
+| Iterations | 199 (201 → 399) |
+| Training loss | 2.560 → 2.473 |
+| Gate promotions | **8 / 20** (pure noise predicts **7.8**) |
+| Candidate vs baseline (20 gates) | **42.2%**, z = −2.87, **p = 0.004** |
+| **Gated model vs baseline (40 games)** | **46.2%** [37.4, 55.1] — no difference |
+| Gated model vs random (40 games) | 86.2% [79.2, 93.3] |
+| Baseline vs random (40 games) | 87.5% [80.7, 94.3] |
+| Trend across the run | first half 42.5% → second half 41.9% (flat) |
+
+### What it means
+
+**Self-play produced no improvement — but, unlike v5, no regression either.**
+
+| Run | vs its own starting point |
+|---|---|
+| v5 (broken metric, corrupted augmentation, no gate) | 31.2% — clearly worse |
+| v7 (corrected + gated) | 46.2% [37.4, 55.1] — no detectable change |
+
+The mechanism is visible in the intermediate data. The **candidate** network
+— trained continuously, repeatedly rejected by the gate — averaged 42.2%
+against the baseline across 20 measurements (p = 0.004): significantly worse.
+Self-play was still actively degrading the network. The gate is what kept
+that damage out of the deployed weights.
+
+### The honest caveat: the gate itself was underpowered
+
+8 of 20 gates promoted. Pure chance predicts 7.8. An 8-game match has a
+standard error of 17.7 percentage points, so a 55% threshold sits 0.28 SE
+above chance — **individual gate decisions were coin flips.**
+
+The aggregate protection is real: a random walk required to win a match
+before advancing drifts upward relative to one that is not, which is why the
+gated model (46.2%) sits above the candidate stream (42.2%). But this is a
+probabilistic filter, not the guarantee it was initially described as.
+Having found one metric that measured nothing, the same scrutiny had to be
+applied to the fix.
+
+### Why no improvement
+
+The binding constraint is sample efficiency, unchanged by the fixes. At 128
+simulations over ~30 legal moves the search yields **4.3 visits per legal
+move**, against roughly 27 for AlphaZero at 800 simulations. The policy loss
+consumes that distribution, and at 4.3 visits per bucket it is still mostly
+sampling noise — sharper than the 1.3 of the original run, not sharp enough.
 
 ## Reproducing
 

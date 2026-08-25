@@ -307,27 +307,28 @@ bullets(s, [
 # 9 - The fix
 # =====================================================================
 s = slide()
-header(s, "The fix", "Make regression structurally impossible", GREEN)
+header(s, "The fix", "Gating stopped the bleeding", GREEN)
 bullets(s, [
     ("Acceptance gating, from AlphaGo Zero", GREEN, True),
-    "Self-play always generates games from the best weights so far.",
-    "New weights are promoted only after scoring ≥ 55% in a "
-    "head-to-head match against the incumbent.",
-    ("The deployed model cannot get worse.", GREEN, True),
-    "Worst case: nothing is promoted — and I find out in minutes, not "
-    "after six hours.",
-    "Also: castling-aware augmentation, 128 simulations instead of 40, "
+    "Self-play always generates from the best weights so far; new weights "
+    "are promoted only after scoring ≥ 55% against the incumbent.",
+    "Plus castling-aware augmentation, 128 simulations instead of 40, "
     "80 gradient steps instead of 200.",
-], top=Inches(2.1), width=Inches(7.0), size=17)
+    ("199 iterations later — no regression.", GREEN, True),
+    "The candidates the gate rejected averaged 42.2% vs baseline "
+    "(p = 0.004): self-play was still degrading the network.",
+    "The gate kept that damage out of the deployed model.",
+], top=Inches(2.1), width=Inches(7.0), size=16)
 
 code(s, [
     ("gate: candidate 43.8%", INK),
     ("      vs best -> rejected", RED),
-], Inches(8.2), Inches(2.5), Inches(4.4), size=16)
+], Inches(8.2), Inches(2.4), Inches(4.4), size=15)
 
-stat(s, Inches(8.2), Inches(4.2), Inches(4.4), "90%",
-     "vs random, with corrected scoring", GREEN)
-note(s, "Prefer a guarantee over a promise to watch carefully.")
+stat(s, Inches(8.2), Inches(4.0), Inches(4.4), "46.2%",
+     "gated model vs its starting point — no detectable change", GREEN, 38)
+note(s, "v5 without the fixes: 31.2%. Gating converted a real regression "
+        "into no change.")
 
 # =====================================================================
 # 10 - Takeaways
@@ -343,9 +344,11 @@ bullets(s, [
     ("Downscaling changes which statistic matters.", INK, True),
     "800 → 40 simulations preserves the best move but destroys the "
     "distribution — and the loss reads the distribution.",
-    ("Build guarantees, not warnings.", GREEN, True),
-    "Gating converts a silent six-hour failure into an immediate, visible one.",
-], top=Inches(2.05), width=Inches(7.6), size=17)
+    ("Then audit the fix too.", RED, True),
+    "My gate promoted 8 of 20 candidates. Pure chance predicts 7.8 — "
+    "an 8-game match could never have resolved this. The same mistake, "
+    "one level up.",
+], top=Inches(2.05), width=Inches(7.6), size=16)
 
 panel(s, Inches(8.9), Inches(2.3), Inches(3.6), Inches(3.4))
 tf = textbox(s, Inches(9.15), Inches(2.55), Inches(3.1), Inches(3.0))
