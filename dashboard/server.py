@@ -45,6 +45,9 @@ MY_GAMES = ROOT / "data" / "my_games.pgn"
 DISABLED_FLAG = LOG_DIR / "dashboard_disabled.flag"
 
 # ---- cheap caches for hot endpoints ---------------------------------
+# A training iteration takes ~2.5 min, so allow a generous gap before
+# declaring the run dead.
+LIVE_WINDOW_SECONDS = 420
 _STATS_CACHE = {"mtime": None, "data": None}
 _PARAM_CACHE = None
 _LOGCKPT_LOCK = threading.Lock()
@@ -228,15 +231,6 @@ def api_stats():
                 net = AlphaZeroNet(cfg.planes, cfg.filters, cfg.res_blocks,
                                    action_planes=cfg.policy_size // 64)
                 _PARAM_CACHE = count_parameters(net)
-            alive = False
-            last_activity = None
-            if logs:
-                age = time.time() - os.path.getmtime(logs[-1])
-                alive = age < 180
-                last_activity = time.strftime(
-                    "%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(logs[-1])))
-            stats["training_alive"] = alive
-            stats["last_activity"] = last_activity
             stats["model_info"] = {
                 "parameters": _PARAM_CACHE,
                 "filters": cfg.filters,
@@ -246,7 +240,22 @@ def api_stats():
             }
             _STATS_CACHE["mtime"] = sig
             _STATS_CACHE["data"] = stats
-        return jsonify(_STATS_CACHE["data"])
+
+        # Liveness must NOT be cached against log mtime: the cache key only
+        # changes when the log is written, so a cached "alive" would survive
+        # forever once training stops. Recompute it on every request.
+        data = dict(_STATS_CACHE["data"])
+        alive, last_activity, age = False, None, None
+        if logs:
+            mtime = os.path.getmtime(logs[-1])
+            age = time.time() - mtime
+            alive = age < LIVE_WINDOW_SECONDS
+            last_activity = time.strftime("%Y-%m-%d %H:%M:%S",
+                                          time.localtime(mtime))
+        data["training_alive"] = alive
+        data["last_activity"] = last_activity
+        data["seconds_since_log"] = round(age) if age is not None else None
+        return jsonify(data)
 
 
 @app.route("/api/checkpoints")
