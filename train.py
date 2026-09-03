@@ -332,6 +332,7 @@ def main():
                                num_games=args.gate_games,
                                num_sims=args.gate_sims, seed=it)
             promoted = score >= args.gate_threshold
+            incumbent = best_iter          # what the match was actually against
             if promoted:
                 best_state = {k: v.detach().cpu().clone()
                               for k, v in net.state_dict().items()}
@@ -339,7 +340,7 @@ def main():
                 torch.save({"model_state_dict": best_state, "iteration": it + 1},
                            "checkpoints/best.pt")
             print(f"[iter {it}] gate: candidate {score:.1%} vs best "
-                  f"(iter {best_iter}) -> "
+                  f"(iter {incumbent}) -> "
                   f"{'PROMOTED' if promoted else 'rejected'} "
                   f"in {time.time() - t0:.0f}s", flush=True)
 

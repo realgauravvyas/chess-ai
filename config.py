@@ -14,6 +14,7 @@ class Config:
     # --- MCTS ----------------------------------------------------------
     num_simulations: int = 40     # simulations per move during self-play
     c_puct: float = 1.5           # exploration constant
+    repetition_aware: bool = False  # let MCTS see repetitions (see RESULTS.md)
     dirichlet_alpha: float = 0.3  # root noise concentration
     dirichlet_epsilon: float = 0.25  # root noise weight
 

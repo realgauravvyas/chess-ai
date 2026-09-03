@@ -177,6 +177,46 @@ move**, against roughly 27 for AlphaZero at 800 simulations. The policy loss
 consumes that distribution, and at 4.3 visits per bucket it is still mostly
 sampling noise — sharper than the 1.3 of the original run, not sharp enough.
 
+## 6. Post-run audit
+
+Two bugs found after the run completed, both fixed:
+
+| Bug | Impact |
+|---|---|
+| `api_stats` computed `training_alive` inside the cache-miss branch, keyed on log mtime | Once training stopped the log stopped changing, so the cache never refreshed and the dashboard reported `training: LIVE` **forever**. The one value that must not be cached against log mtime is the flag whose job is to notice mtime stopped advancing. |
+| `latest_checkpoint()` scanned only `checkpoints/` | The dashboard's default model for playing, evaluating and teaching was `iter_500.pt` — the **regressed v5 model** (31.2% vs baseline). Gated runs write to `runs/<name>/checkpoints/best.pt`, which the glob could not match. |
+
+Also corrected: the gate log printed the post-promotion `best_iter`, so a
+promotion read "vs best (iter 400)" when it had played the previous best.
+
+### Repetition blindness: measured, not assumed
+
+MCTS copied the board with `stack=False`, discarding move history, so
+repetitions were invisible to the search. **4 of 6 games ended in threefold
+repetition** the engine never saw coming, and the decisive 40-game match
+drew 27.
+
+An opt-in fix (`Config.repetition_aware`) carries 12 plies of history and
+scores a repeated position as a draw. Measured over 20 games:
+
+```
+repetition-aware vs repetition-blind (same weights)
+  8.5 - 11.5   =  42.5%    z = -0.67, p ~ 0.50
+```
+
+**It does not improve playing strength.** But it changes how games end:
+
+| | blind | aware |
+|---|---|---|
+| Threefold repetitions | 4 / 6 | 0 / 20 |
+| Decisive games | ~33% | ~55% |
+
+So its value is to *measurement*, not to play: a 55% decisive rate makes a
+match roughly twice as informative per game as a 33% one, which is the
+cheapest available way to strengthen the underpowered acceptance gate.
+
+Default is **off**, so the published experiments reproduce exactly.
+
 ## Reproducing
 
 ```powershell

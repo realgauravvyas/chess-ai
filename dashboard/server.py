@@ -79,17 +79,31 @@ def is_model_checkpoint(name):
 
 
 def latest_checkpoint():
-    best, best_n = None, -1
-    for p in glob.glob(str(CKPT_DIR / "iter_*.pt")) + glob.glob(str(CKPT_DIR / "latest.pt")):
-        name = os.path.basename(p)
-        if name == "latest.pt":
-            continue
-        m = re.match(r"iter_(\d+)\.pt$", name)
-        if m and int(m.group(1)) > best_n:
-            best_n, best = int(m.group(1)), p
-    if best is None and os.path.exists(CKPT_DIR / "latest.pt"):
-        best = str(CKPT_DIR / "latest.pt")
-    return best
+    """The best model to play by default.
+
+    Searches checkpoints/ and every runs/<name>/checkpoints/. A gated run
+    writes its winner to best.pt, and a gate win is the strongest evidence
+    available, so those are preferred. Otherwise the most recently written
+    iter_N.pt wins: iteration numbers are not comparable across runs (v5
+    reached iter_500 and v7 only iter_400, but v7 is the later, better run),
+    so ordering is by modification time.
+    """
+    run_dirs = [CKPT_DIR] + [Path(d) for d in
+                             glob.glob(str(ROOT / "runs" / "*" / "checkpoints"))]
+
+    bests = [p for d in run_dirs
+             for p in glob.glob(str(d / "best.pt"))]
+    if bests:
+        return max(bests, key=os.path.getmtime)
+
+    iters = [p for d in run_dirs
+             for p in glob.glob(str(d / "iter_*.pt"))
+             if re.match(r"iter_\d+\.pt$", os.path.basename(p))]
+    if iters:
+        return max(iters, key=os.path.getmtime)
+
+    latests = [p for d in run_dirs for p in glob.glob(str(d / "latest.pt"))]
+    return max(latests, key=os.path.getmtime) if latests else None
 
 
 def legal_list(board):
