@@ -131,7 +131,8 @@ play.py                   terminal play
 analyze_losses.py         forensics: how does it lose?
 dashboard/                Flask server + single-page UI
 experiments/              strength measurement scripts
-docs/report/              LaTeX technical report
+docs/ieee_report/         LaTeX project report (current)
+docs/report/              first draft - SUPERSEDED, see its SUPERSEDED.md
 ```
 
 ## Hardware
