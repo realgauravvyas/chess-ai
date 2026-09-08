@@ -189,6 +189,36 @@ Two bugs found after the run completed, both fixed:
 Also corrected: the gate log printed the post-promotion `best_iter`, so a
 promotion read "vs best (iter 400)" when it had played the previous best.
 
+### The loss-forensics tool never worked
+
+`analyze_losses.py` is meant to explain *how* the network loses. Its
+attribution pass only runs when the network actually loses, and the network
+now beats a random mover 24-0-16, so the path went unexercised for the whole
+project while carrying **two** independent bugs:
+
+| Bug | Effect |
+|---|---|
+| Inverted parity: `(ply % 2 == 0) != net_white` selects the network's own moves, not the opponent's | Material only falls when the opponent captures, so every candidate drop was <= 0 |
+| Off-by-one: `diffs` starts at the initial position, so `diffs[k+1]` follows `history[k]` -- the code compared `diffs[k-1] - diffs[k]` | Drops were read from the wrong pair of positions |
+
+Either alone forces every drop to 0, the `drop >= 2` branch never fires, and
+the tool prints empty phase / hung-piece / undefended tables while looking
+like it ran fine. Fixing the parity alone was not enough; the off-by-one only
+surfaced once the logic was extracted into `worst_blunder()` and tested
+against games with known answers
+(`experiments/test_forensics.py`, 4 cases, all passing).
+
+It also hardcoded `checkpoints/iter_500.pt` -- the regressed v5 model -- by a
+relative path that breaks outside the project root.
+
+### Watchdog crashed on a fresh clone
+
+`watchdog_dashboard.py` opened `logs/dashboard.log` without creating `logs/`.
+That directory is gitignored, so on a clone it raised `FileNotFoundError` at
+the first restart attempt (verified against a real `git clone`). It also
+leaked one file descriptor per restart, in a process designed to run
+indefinitely, and retried a failing server every 28s with no backoff.
+
 ### Repetition blindness: measured, not assumed
 
 MCTS copied the board with `stack=False`, discarding move history, so

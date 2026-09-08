@@ -24,12 +24,77 @@ VALS = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
         chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
 
 
+def default_checkpoint():
+    """Newest gated best.pt, else the newest iter_N.pt, across all runs.
+
+    Iteration numbers are not comparable between runs, so order by mtime.
+    """
+    dirs = [ROOT / "checkpoints"] + sorted(
+        (ROOT / "runs").glob("*/checkpoints")) if (ROOT / "runs").exists() \
+        else [ROOT / "checkpoints"]
+    bests = [q for d in dirs for q in d.glob("best.pt")]
+    if bests:
+        return max(bests, key=lambda q: q.stat().st_mtime)
+    iters = [q for d in dirs for q in d.glob("iter_*.pt")]
+    return max(iters, key=lambda q: q.stat().st_mtime) if iters else None
+
+
 def material(board, net_color):
     s = 0
     for p in board.piece_map().values():
         v = VALS[p.piece_type]
         s += v if p.color == net_color else -v
     return s
+
+
+
+def worst_blunder(history, diffs, net_white, net_color):
+    """Largest single material loss caused by an opponent move.
+
+    `history` is [(san, fen_after, ply_after), ...] and `diffs[i]` is the
+    network's material balance after i half-moves. diffs[0] is the starting
+    position, so the balance *after* history[k] is diffs[k+1] and the
+    balance *before* it is diffs[k] -- diffs is one longer than history and
+    offset by one against it.
+
+    Only opponent moves are considered: the network's material balance falls
+    when the OPPONENT captures. board.ply() is odd once White has moved, so
+    the opponent moved whenever that parity differs from the network's
+    colour. Getting either the parity or the offset wrong makes every
+    candidate drop <= 0 and the whole pass silently produce nothing.
+    """
+    worst = None
+    for k in range(len(history)):
+        ply = history[k][2]                       # ply AFTER this half-move
+        opp_moved = (ply % 2 == 1) != net_white
+        if not opp_moved:
+            continue
+        drop = diffs[k] - diffs[k + 1]
+        if worst is None or drop > worst[0]:
+            worst = (drop, k)
+    drop, k = worst if worst else (0, None)
+
+    info = {"drop": drop}
+    if k is not None and drop >= 2:
+        san = history[k][0]
+        # position before the opponent's move: the FEN after the previous
+        # half-move, or the initial position when it was the very first.
+        before = chess.Board(history[k - 1][1]) if k else chess.Board()
+        mv = before.parse_san(san)
+        tgt = mv.to_square
+        mover = before.piece_at(mv.from_square)
+        captured = before.piece_type_at(tgt)
+        attackers = len(list(before.attackers(not net_color, tgt)))
+        defenders = len(list(before.attackers(net_color, tgt)))
+        info.update({
+            "phase": ("opening" if k <= 20 else
+                      "middlegame" if k <= 70 else "endgame"),
+            "hung_piece": VALS.get(captured, 0) if captured else 0,
+            "mover_piece": VALS.get(mover.piece_type, 0) if mover else 0,
+            "undefended": attackers > 0 and defenders == 0,
+            "san": san,
+        })
+    return info
 
 
 def main():
@@ -39,8 +104,12 @@ def main():
 
     net = AlphaZeroNet(cfg.planes, cfg.filters, cfg.res_blocks,
                        action_planes=cfg.policy_size // 64)
-    blob = load_checkpoint("checkpoints/iter_500.pt")
-    net.load_state_dict(blob["model_state_dict"])
+    ckpt = Path(sys.argv[4]) if len(sys.argv) > 4 else default_checkpoint()
+    if ckpt is None or not ckpt.exists():
+        sys.exit(f"no checkpoint found (looked for {ckpt}); pass one as arg 4")
+    print(f"analysing {ckpt}")
+    blob = load_checkpoint(str(ckpt))
+    net.load_state_dict(blob.get("model_state_dict", blob))
     net.eval()
 
     seed = int(sys.argv[3]) if len(sys.argv) > 3 else 7
@@ -59,7 +128,7 @@ def main():
 
         history = []           # (san, fen_after, ply)
         diffs = [material(board, net_color)]
-        while not board.is_game_over() and board.ply() < 300:
+        while not board.is_game_over(claim_draw=True) and board.ply() < 300:
             if board.turn == net_color:
                 probs = mcts.get_action_probs(board, sims)
                 if not probs:
@@ -81,39 +150,8 @@ def main():
             wins += 1
             continue
 
-        # ---- forensic pass on this loss ----
-        # find largest single-opponent-move material drop
-        worst = None  # (drop, ply_idx, fen_before_opp, fen_after_opp)
-        for k in range(1, len(history)):
-            ply = history[k][2]          # ply AFTER this half-move
-            opp_moved = (ply % 2 == 0) != net_white  # odd plies are white
-            drop = diffs[k - 1] - diffs[k] if not opp_moved else 0
-            if not opp_moved:
-                continue
-            drop = diffs[k - 1] - diffs[k]
-            if worst is None or drop > worst[0]:
-                worst = (drop, k)
-        drop, k = worst if worst else (0, None)
-
-        info = {"drop": drop, "plies": board.ply()}
-        if k is not None and drop >= 2:
-            san, fen_after, _ = history[k]
-            fb = chess.Board(history[k - 1][1])   # position before opp move
-            mv = fb.parse_san(san)
-            tgt = mv.to_square
-            movers = fb.piece_at(mv.from_square)
-            # what got captured on the target square
-            captured = fb.piece_type_at(tgt)
-            attackers = len(list(fb.attackers(not net_color, tgt)))
-            defenders = len(list(fb.attackers(net_color, tgt)))
-            info.update({
-                "phase": ("opening" if k <= 20 else
-                          "middlegame" if k <= 70 else "endgame"),
-                "hung_piece": (VALS.get(captured, 0) if captured else 0),
-                "mover_piece": VALS.get(movers.piece_type, 0) if movers else 0,
-                "undefended": attackers > 0 and defenders == 0,
-                "san": san,
-            })
+        info = worst_blunder(history, diffs, net_white, net_color)
+        info["plies"] = board.ply()
         losses.append(info)
         print(f"[{game_no}] LOSS as {'white' if net_white else 'black'} "
               f"(worst drop {info['drop']:+d})", flush=True)
@@ -125,7 +163,6 @@ def main():
     phases = Counter(l.get("phase", "?") for l in losses)
     undefended = sum(1 for l in losses if l.get("undefended"))
     hung = Counter(l["hung_piece"] for l in losses if "hung_piece" in l)
-    colors = Counter()  # filled implicitly by loop order; recount below skipped
     print(f"blunder phase : {dict(phases)}")
     print(f"pure hangs (piece taken on undefended square): {undefended}/{len(losses)}")
     print(f"value of piece lost (1=P 3=N/B 5=R 9=Q): {dict(sorted(hung.items()))}")
