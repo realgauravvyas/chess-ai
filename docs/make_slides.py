@@ -1,4 +1,4 @@
-"""Build the 10-slide presentation deck (no title slide - author supplies it).
+"""Build the 9-slide presentation deck (no title slide - author supplies it).
 
 Widescreen 16:9, designed to be readable from the back of a room: one idea
 per slide, large type, and every number traceable to the report.
@@ -160,47 +160,31 @@ stat(s, Inches(8.6), Inches(4.15), Inches(3.9), "676,648",
 note(s, "AlphaZero used ~5,000 TPUs. This runs on one desktop with an RTX 3060.")
 
 # =====================================================================
-# 2 - Representation
+# 2 - Representation + architecture
 # =====================================================================
 s = slide()
-header(s, "Data science: representation", "Turning a chessboard into a tensor")
+header(s, "Data science: representation", "From chessboard to tensor to network")
 bullets(s, [
     ("Input — 18 binary planes of 8×8", BLUE, True),
-    "12 piece planes (6 types × 2 colours)  ·  4 castling rights  "
-    "·  1 en passant  ·  1 side to move",
+    "12 piece planes (6 types × 2 colours) · 4 castling rights · "
+    "1 en passant · 1 side to move",
     ("Output — 4,672 actions", BLUE, True),
     "64 origin squares × 73 move types: 56 queen-style, 8 knight, "
-    "9 underpromotions.",
-    "Every legal chess move maps to exactly one index. Verified by a "
-    "round-trip test over thousands of positions: 0 collisions.",
-], top=Inches(2.1), width=Inches(7.5), size=18)
+    "9 underpromotions. Every legal move maps to exactly one index — "
+    "round-trip tested, 0 collisions.",
+    ("The network", BLUE, True),
+    "3×3 conv 18→64, ten residual blocks with batch norm, then two heads: "
+    "policy → 4,672 logits, value → one scalar in [−1, 1].",
+    "Both heads share the trunk, so one representation must serve two tasks.",
+], top=Inches(2.05), width=Inches(7.6), size=16)
 
-stat(s, Inches(8.8), Inches(2.4), Inches(3.7), "18 × 8 × 8", "board in", BLUE, 36)
-stat(s, Inches(8.8), Inches(4.25), Inches(3.7), "4,672", "moves out", BLUE, 36)
+stat(s, Inches(8.8), Inches(2.2), Inches(3.7), "18 × 8 × 8", "board in", BLUE, 32)
+stat(s, Inches(8.8), Inches(3.85), Inches(3.7), "4,672", "moves out", BLUE, 32)
+stat(s, Inches(8.8), Inches(5.5), Inches(3.7), "760,717", "parameters", GREEN, 32)
 note(s, "Representation is the part you cannot fix later with more compute.")
 
 # =====================================================================
-# 3 - Architecture
-# =====================================================================
-s = slide()
-header(s, "The model", "A residual policy–value network")
-bullets(s, [
-    "3×3 convolution: 18 planes → 64 channels",
-    "10 residual blocks, 64 filters, batch normalisation",
-    ("Policy head → 4,672 logits   ·   Value head → one scalar", BLUE, True),
-    "Both heads share the trunk — the representation must serve two "
-    "tasks at once.",
-    "Trained with the AlphaZero loss: cross-entropy on the search "
-    "distribution, plus MSE on the game result.",
-], top=Inches(2.15), width=Inches(7.3), size=18)
-
-stat(s, Inches(8.7), Inches(2.4), Inches(3.8), "~1000×", "smaller than AlphaZero", AMBER)
-stat(s, Inches(8.7), Inches(4.25), Inches(3.8), "6 CPU + 1 GPU",
-     "self-play on cores, training on GPU", MUTED, 26)
-note(s, "Self-play is CPU-bound; the GPU only does batched gradient steps.")
-
-# =====================================================================
-# 4 - Stage 1 results
+# 3 - Stage 1 results
 # =====================================================================
 s = slide()
 header(s, "Stage 1 · supervised", "Learning from 677k human positions",
@@ -218,7 +202,7 @@ bullets(s, [
 ], top=Inches(2.3), left=Inches(7.1), width=Inches(5.5), size=16)
 
 # =====================================================================
-# 5 - The loss curve that lied
+# 4 - The loss curve that lied
 # =====================================================================
 s = slide()
 header(s, "Stage 2 · self-play", "300 iterations. The loss fell the whole way.")
@@ -233,7 +217,7 @@ bullets(s, [
 ], top=Inches(2.3), left=Inches(7.1), width=Inches(5.5), size=17)
 
 # =====================================================================
-# 6 - The broken metric
+# 5 - The broken metric
 # =====================================================================
 s = slide()
 header(s, "The bug", "The evaluation was measuring nothing", RED)
@@ -258,7 +242,7 @@ note(s, "A metric returning a plausible constant is more dangerous than one "
         "that crashes.")
 
 # =====================================================================
-# 7 - The real result
+# 6 - The real result
 # =====================================================================
 s = slide()
 header(s, "The real result", "Self-play made the model worse", RED)
@@ -283,7 +267,7 @@ bullets(s, [
 ], top=Inches(4.5), size=17)
 
 # =====================================================================
-# 8 - Diagnosis
+# 7 - Diagnosis
 # =====================================================================
 s = slide()
 header(s, "Diagnosis", "Two root causes, isolated by experiment")
@@ -304,7 +288,7 @@ bullets(s, [
 ], top=Inches(2.2), left=Inches(6.5), width=Inches(6.1), size=15)
 
 # =====================================================================
-# 9 - The fix
+# 8 - The fix
 # =====================================================================
 s = slide()
 header(s, "The fix", "Gating stopped the bleeding", GREEN)
@@ -331,7 +315,7 @@ note(s, "v5 without the fixes: 31.2%. Gating converted a real regression "
         "into no change.")
 
 # =====================================================================
-# 10 - Takeaways
+# 9 - Takeaways
 # =====================================================================
 s = slide()
 header(s, "What I take away", "Measurement is the hard part")
