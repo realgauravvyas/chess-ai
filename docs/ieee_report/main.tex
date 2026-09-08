@@ -291,7 +291,7 @@ human actually chose, against a uniform-over-legal-moves baseline near 3.4.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.70\linewidth]{figures/pretrain_loss.pdf}
+\includegraphics[width=0.64\linewidth]{figures/pretrain_loss.pdf}
 \caption{Supervised stage. Policy cross-entropy converges to $\approx 2.06$;
 value MSE plateaus near 0.73, reflecting the intrinsic difficulty of
 predicting a game outcome from a single mid-game position.}
@@ -336,7 +336,7 @@ the training loss fell monotonically from 2.36 to 1.85
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.70\linewidth]{figures/v5_regression.pdf}
+\includegraphics[width=0.64\linewidth]{figures/v5_regression.pdf}
 \caption{The v5 run. Training loss (left axis) falls throughout, while the
 reported evaluation score (right axis) is pinned at 50\% by the defect
 of Section~\ref{sec:metric}. Direct head-to-head play shows the model in fact
@@ -359,7 +359,7 @@ simulation counts (Figure~\ref{fig:sims}). Search wins comfortably ---
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.70\linewidth]{figures/sims_scaling.pdf}
+\includegraphics[width=0.64\linewidth]{figures/sims_scaling.pdf}
 \caption{MCTS against the network's own greedy policy. Search is clearly
 stronger than the raw policy even at 40 simulations, so the
 \emph{argmax} of the search is a good move; the upper axis shows why the
@@ -396,7 +396,7 @@ scoring at least 55\% against the incumbent.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.70\linewidth]{figures/v7_progress.pdf}
+\includegraphics[width=0.64\linewidth]{figures/v7_progress.pdf}
 \caption{The corrected run. Each gate point plots the candidate's score
 against the incumbent (markers) and against the frozen pretrained network
 (line). The dashed line is equal strength.}
@@ -409,7 +409,7 @@ standard error is 7.9 points, against 17.7 for the eight-game training
 matches (Table~\ref{tab:v7}).
 
 It scored 46.2\% (95\% CI 37.4--55.1, $z=-0.83$): no detectable
-difference from its starting point, with both models beating a random mover
+difference from its starting point, both models beating a random mover
 identically (86.2\% and 87.5\%). Self-play produced no improvement --- but
 nor the regression of Section~\ref{sec:regression}.
 
@@ -418,9 +418,8 @@ network, trained continuously and repeatedly rejected, averaged 42.2\% over
 20 measurements ($z=-2.87$, $p=0.004$). Self-play was still degrading the
 network, and the gate kept that damage out of the deployed weights.
 
-The guarantee is weaker than it appears, however: 8 of 20 gates promoted
-against 7.8 expected under the null of no improvement
-(Section~\ref{sec:discussion}).
+The guarantee is weaker than it appears: 8 of 20 gates promoted against
+7.8 expected under the null (Section~\ref{sec:discussion}).
 
 \begin{table}[t]
 \centering
@@ -474,8 +473,8 @@ effect size. Having diagnosed one metric that measured nothing, we built a
 safeguard and assumed it worked: the same error one level up.
 
 \noindent\textbf{Limitations.}
-The value head plateaus at MSE 0.73, and absolute strength is not calibrated
-against a rated engine, so all results are relative comparisons.
+The value head plateaus at MSE 0.73, and absolute strength is uncalibrated
+against a rated engine, so all results are relative.
 
 %======================================================================
 \section{Conclusion and Future Work}
@@ -510,17 +509,20 @@ reduced strength would yield an Elo estimate~\cite{elo1978rating}.
 \begin{itemize}[noitemsep]
   \item \textbf{Code:} \url{https://github.com/realgauravvyas/chess-ai}
         --- network, search, both training stages, dashboard, and the
-        \texttt{experiments/} scripts reproducing every number here.
-        \texttt{RESULTS.md} records the findings and defects fixed.
+        \texttt{experiments/} scripts reproducing every number here;
+        \texttt{RESULTS.md} records the findings and the defects fixed.
+  \item \textbf{Tests:} \texttt{tests/} --- 76 checks over every module,
+        plus a mutation suite reintroducing each defect reported here and
+        asserting the tests catch it (6/6).
   \item \textbf{Dashboard:} \texttt{dashboard/server.py} --- play any
         checkpoint, inspect the principal variation, watch training live.
   \item \textbf{Video:} \textsc{[URL to be added]}
 \end{itemize}
 
 \noindent
-Presentation follows standard guidance~\cite{gopen1990science}.
-AI-assisted tools aided code review and drafting; all results are the
-author's own and reproducible from the repository.
+Presentation follows~\cite{gopen1990science}; AI-assisted tools aided
+code review and drafting. All results are the author's own and reproducible
+from the repository.
 
 \vfill\pagebreak
 {\fontsize{8}{9}\selectfont
