@@ -247,6 +247,40 @@ cheapest available way to strengthen the underpowered acceptance gate.
 
 Default is **off**, so the published experiments reproduce exactly.
 
+## 7. Why the bugs kept surfacing
+
+Four rounds of review found bugs one at a time. The pattern is worth
+recording, because it is not simply carelessness:
+
+| Cause | Example |
+|---|---|
+| Reading code finds different bugs than running it | `analyze_losses.py` only executes when the network loses, and it beats a random mover 24-0-16 |
+| Some bugs did not exist at review time | `latest_checkpoint()` was correct until `runs/` was created; the stuck `training: LIVE` only manifests after training stops |
+| Fixing code introduces bugs | a whitespace-insensitive trim script silently deleted "Trimester 9, Project 3" from the report |
+
+The response was to stop reviewing and start executing. `tests/test_suite.py`
+runs 76 checks against every module, and `tests/test_mutations.py`
+reintroduces each bug this project actually shipped and asserts the suite
+fails on it.
+
+Writing the mutation tests immediately exposed **two coverage holes in the
+new suite itself**: the mirror-augmentation test inspected `batch[i][0]`,
+which `train_step` never modifies (it mirrors a local array), so it could
+not fail; and the value-range test used zero input, where an unbounded head
+still returns a small number. Both are fixed, and all six historical bugs
+are now caught:
+
+```
+caught  evaluation scored White's games, not the network's
+caught  mirror augmentation corrupted castling planes
+caught  loss forensics had inverted parity
+caught  loss forensics was off by one in diffs
+caught  plain .pgn fed to the zstd reader
+caught  value head could return values outside [-1, 1]
+
+6/6 historical bugs are caught by the suite
+```
+
 ## Reproducing
 
 ```powershell

@@ -115,6 +115,28 @@ All scoring is from the **network's** perspective. Scoring from white's while
 the network alternates colors silently destroys the metric — that bug made
 159 logged evaluation points across two runs completely uninformative.
 
+## Testing
+
+```powershell
+python tests	est_suite.py           # 76 checks across every module
+python tests	est_mutations.py       # proves the suite catches real bugs
+python dashboard	est_dashboard.py   # 21 end-to-end API tests (server must be up)
+python experiments	est_forensics.py # blunder attribution, 4 known-answer cases
+```
+
+`test_suite.py` executes every module against known answers - board
+encoding, move encoding, network shapes and bounds, MCTS terminal scoring,
+evaluation arithmetic, mirror augmentation, self-play sample shape, and the
+PGN reader.
+
+`test_mutations.py` is the more important one. A green suite proves nothing
+if it never exercises the broken path, so this reintroduces each bug this
+project actually shipped - the evaluation that scored the wrong colour, the
+augmentation that produced illegal boards, the forensics tool with inverted
+parity and an off-by-one - and asserts the suite fails on each. All six are
+currently caught. Any mutation that stays green is a coverage hole, and
+finding two of those is what motivated writing it.
+
 ## Layout
 
 ```
@@ -131,6 +153,7 @@ play.py                   terminal play
 analyze_losses.py         forensics: how does it lose?
 dashboard/                Flask server + single-page UI
 experiments/              strength measurement scripts
+tests/                    executable test suite + mutation tests
 docs/ieee_report/         LaTeX project report (current)
 docs/report/              first draft - SUPERSEDED, see its SUPERSEDED.md
 ```
