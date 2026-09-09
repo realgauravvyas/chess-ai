@@ -40,8 +40,16 @@ and I ended up solving it.
 
 *[On screen: pipeline diagram — Figure 1 from the report]*
 
-The architecture is AlphaZero's. One network with two outputs: a **policy
-head** that proposes plausible moves, and a **value head** that judges who's
+The approach is **AlphaZero's** — the system **DeepMind** published in
+2017, which learned chess, shogi and Go purely by playing against itself and
+beat the strongest engines in the world. No human games, no opening theory,
+no hand-written evaluation. Just the rules.
+
+I'm reproducing that recipe at roughly **one millionth of the compute**, to
+see which parts of it still hold at desktop scale.
+
+The architecture is theirs. One network with two outputs: a **policy head**
+that proposes plausible moves, and a **value head** that judges who's
 winning.
 
 The network alone isn't a chess player. It becomes one inside **Monte Carlo
@@ -248,8 +256,9 @@ real chess. A training system with a **provable** safeguard against
 regression. An evaluation methodology rigorous enough to detect something a
 loss curve fundamentally cannot show. And a test suite that proves itself.
 
-The finding I'd point to is this: at this compute scale, self-play
-reinforcement learning doesn't add to a well-pretrained network — and I can
+The finding I'd point to is this: running DeepMind's recipe at this
+compute scale, self-play reinforcement learning doesn't add to a
+well-pretrained network — and I can
 show you exactly why, with the numbers. **4.3 visits per legal move against
 AlphaZero's 27.** That's a sample-efficiency limit, measured, not guessed.
 

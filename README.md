@@ -6,6 +6,12 @@ No install, no server — the network and the Monte Carlo Tree Search both run
 client-side. Give it a second on the first move while the 3 MB model loads.
 
 
+![The training dashboard](docs/images/dashboard.png)
+*The dashboard: play any checkpoint, watch the search, and follow training live.*
+
+![The browser demo](docs/images/browser-demo.png)
+*The same network running client-side on GitHub Pages — no server.*
+
 A compact AlphaZero-style chess engine that runs end to end on a single
 desktop machine. A **760,717-parameter** residual policy–value network is
 first trained to imitate human games from the Lichess database, then

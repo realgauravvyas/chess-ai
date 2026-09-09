@@ -146,18 +146,21 @@ def code(s, lines, left, top, width, size=17, color=INK):
 s = slide()
 header(s, "The project", "Teaching a network chess, with no chess knowledge")
 bullets(s, [
-    ("No opening book. No piece values. No evaluation function.", INK, True),
-    "Input: the rules, plus human games. Everything else is learned.",
-    "One network, two heads — policy (which moves look good) and value "
-    "(who is winning).",
-    "The network is not a player. Monte Carlo Tree Search turns it into one.",
-    "Two stages: imitate humans, then improve by playing itself.",
-], top=Inches(2.15), width=Inches(7.4))
+    ("Following AlphaZero — DeepMind, 2017", BLUE, True),
+    "DeepMind showed one network, trained only by playing itself, could "
+    "master chess, shogi and Go and beat the strongest engines of the day.",
+    ("This project reproduces that recipe at ~1/1,000,000 the compute.",
+     INK, True),
+    "No opening book, no piece values, no evaluation function — just the "
+    "rules and data.",
+    "One network, two heads: policy (which moves look good) and value "
+    "(who is winning). Monte Carlo Tree Search turns it into a player.",
+], top=Inches(2.15), width=Inches(7.4), size=17)
 
 stat(s, Inches(8.6), Inches(2.3), Inches(3.9), "760,717", "trainable parameters")
 stat(s, Inches(8.6), Inches(4.15), Inches(3.9), "676,648",
      "human positions used for pretraining", GREEN)
-note(s, "AlphaZero used ~5,000 TPUs. This runs on one desktop with an RTX 3060.")
+note(s, "Silver et al., Science 2018. AlphaZero used ~5,000 TPUs; this runs on one desktop with an RTX 3060.")
 
 # =====================================================================
 # 2 - Representation + architecture
