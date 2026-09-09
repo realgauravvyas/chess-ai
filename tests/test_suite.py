@@ -397,6 +397,66 @@ def test_checkpoint_discovery():
 
 
 # =====================================================================
+def test_frontend_js():
+    """Board-coordinate and FEN helpers in dashboard/static/index.html.
+
+    The front end is ~700 lines that had only ever been syntax-checked.
+    Ground truth for piece placement is generated here from python-chess
+    and handed to node.
+    """
+    section("front-end helpers")
+    import json
+    import random
+    import shutil
+    import subprocess
+    import tempfile
+
+    node = shutil.which("node")
+    if not node:
+        if VERBOSE:
+            print("skip  front-end tests (node not installed)")
+        return
+
+    rng = random.Random(4)
+    fens = [chess.Board().fen(),
+            "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "6k1/4P3/8/8/8/8/8/4K3 w - - 0 1"]
+    pieces, turns = {}, {}
+    for f in fens:
+        b = chess.Board(f)
+        turns[f] = "w" if b.turn == chess.WHITE else "b"
+        pieces[f] = {}
+        for sq in rng.sample(range(64), 24):
+            piece = b.piece_at(sq)
+            pieces[f][chess.square_name(sq)] = piece.symbol() if piece else None
+
+    with tempfile.TemporaryDirectory() as d:
+        truth = Path(d) / "truth.json"
+        truth.write_text(json.dumps({"pieces": pieces, "turns": turns}),
+                         encoding="utf-8")
+        r = subprocess.run(
+            [node, str(ROOT / "tests" / "test_frontend.js"),
+             str(ROOT / "dashboard" / "static" / "index.html"), str(truth)],
+            capture_output=True, text=True, timeout=180)
+
+    tail = (r.stdout.strip().splitlines() or ["no output"])[-1]
+    check(f"front-end helpers: {tail}", r.returncode == 0,
+          (r.stdout + r.stderr)[-500:])
+
+    # the page must still parse as JavaScript
+    import re as _re
+    html = (ROOT / "dashboard" / "static" / "index.html").read_text(encoding="utf-8")
+    js = _re.search(r"<script>(.*?)</script>", html, _re.S).group(1)
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "page.js"
+        f.write_text(js, encoding="utf-8")
+        r = subprocess.run([node, "--check", str(f)],
+                           capture_output=True, text=True, timeout=120)
+    check("dashboard JavaScript parses", r.returncode == 0, r.stderr[-300:])
+
+
+# =====================================================================
 def test_cli_entry_points():
     """play.py and eval_match.py: the two CLIs a user actually runs."""
     section("play.py")
@@ -626,7 +686,7 @@ def main():
              test_mcts, test_train_step, test_selfplay_samples,
              test_pgn_reader, test_checkpoint_discovery,
              test_cli_entry_points, test_training_wrapper,
-             test_dashboard_internals, test_forensics]
+             test_dashboard_internals, test_frontend_js, test_forensics]
     for t in tests:
         try:
             t()

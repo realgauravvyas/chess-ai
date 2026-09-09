@@ -354,8 +354,11 @@ function dispToSq(dr,df){
   return FILES[f]+(r+1);
 }
 function sqToDisp(sq){
+  // Inverse of dispToSq. When the board is flipped that maps display
+  // column df to file 7-df, so the file must be mirrored back here too;
+  // returning f unchanged put every square in the wrong column.
   const f=FILES.indexOf(sq[0]), r=+sq[1]-1;
-  return S.flipped ? [r,f] : [7-r,f];
+  return S.flipped ? [r,7-f] : [7-r,f];
 }
 
 /* ============================================================ board */

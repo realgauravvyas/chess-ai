@@ -247,6 +247,26 @@ cheapest available way to strengthen the underpowered acceptance gate.
 
 Default is **off**, so the published experiments reproduce exactly.
 
+## 12. The front end was never functionally tested
+
+`dashboard/static/index.html` is ~700 lines of JavaScript that had only ever
+been syntax-checked. Its board-coordinate helpers are exactly the kind of
+code that fails silently, so they were tested against python-chess ground
+truth: `pieceAt` over 96 squares across four positions, `fenTurn`,
+`dispToSq` covering all 64 squares in both orientations, and `isMyPiece`.
+
+All passed except one: **`sqToDisp` did not invert `dispToSq` on a flipped
+board.** It mirrors the rank but returns the file unchanged, so every one of
+the 64 squares mapped to the wrong column when the board is viewed from
+Black's side.
+
+It is **dead code** - zero call sites - so no user ever hit it. It was fixed
+rather than deleted, because it is the obvious helper to reach for when
+touching the board rendering, and a silently wrong one is worse than none.
+
+`tests/test_frontend.js` now runs from the Python suite whenever node is
+available, and the mutation set covers the flip bug.
+
 ## 10. The two command-line entry points
 
 `play.py` and `eval_match.py` were the last modules with no coverage.

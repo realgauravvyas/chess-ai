@@ -99,6 +99,11 @@ MUTATIONS = [
      "eval_match.py",
      "    new_path = Path(sys.argv[3]) if len(sys.argv) > 3 else default_new()",
      '    new_path = ROOT / "checkpoints" / "iter_500.pt"'),
+
+    ("sqToDisp did not invert dispToSq on a flipped board",
+     "dashboard/static/index.html",
+     "  return S.flipped ? [r,7-f] : [7-r,f];",
+     "  return S.flipped ? [r,f] : [7-r,f];"),
 ]
 
 
