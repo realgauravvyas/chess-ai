@@ -7,7 +7,7 @@ Every number here is from a run that can be reproduced with the scripts in
 
 | | |
 |---|---|
-| Test suite | **123 checks**, 0 failing |
+| Test suite | **124 checks**, 0 failing |
 | Mutation coverage | **15/15** historical bugs caught |
 | Dashboard API tests | 21 passing |
 | Report | 4 content pages + 1 references page |

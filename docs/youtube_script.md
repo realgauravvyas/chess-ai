@@ -217,7 +217,7 @@ The safeguard did exactly what I designed it to do.
 
 The last piece is making all of this reproducible.
 
-I wrote a test suite — **123 checks** covering every module: board encoding,
+I wrote a test suite — **124 checks** covering every module: board encoding,
 move encoding, network shapes, search behaviour, evaluation arithmetic, the
 data pipeline, and the browser front end.
 
