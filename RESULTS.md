@@ -3,6 +3,19 @@
 Every number here is from a run that can be reproduced with the scripts in
 `experiments/`. All match scores are from the **network's** perspective.
 
+## Current state
+
+| | |
+|---|---|
+| Test suite | **123 checks**, 0 failing |
+| Mutation coverage | **15/15** historical bugs caught |
+| Dashboard API tests | 21 passing |
+| Report | 4 content pages + 1 references page |
+| Deck | 9 slides |
+
+Counts quoted inside the numbered sections below are point-in-time: each
+records the suite size when that round of work happened.
+
 ## Summary
 
 The supervised stage worked well. The self-play stage, as originally
@@ -366,7 +379,7 @@ invalid, and now removes both guards to reproduce the actual historical
 state. Distinguishing "the tests missed it" from "the mutation did not
 reproduce the bug" matters; only the first is a coverage problem.
 
-Mutation coverage now stands at **11/11**, over 104 checks.
+Mutation coverage reached **11/11** at this point, over 104 checks.
 
 ## 8. Dashboard teach-me loop: two bugs, one of them a regression
 
@@ -389,7 +402,7 @@ wrong directory, silently overwritten each time. Taught models now get their
 own `taught_N.pt` series beside the checkpoint they came from, recording
 `taught_from`, listed in the UI but never chosen as the default opponent.
 
-Both are now in the mutation set, which stands at **9/9 caught**. Adding
+Both went into the mutation set, which stood at **9/9 caught**. Adding
 them exposed one more hole first: the original test asserted that
 `copy.deepcopy` produces an independent object, which tests `deepcopy`
 rather than the teach code. It now calls `_teach_worker` directly and
@@ -407,7 +420,7 @@ recording, because it is not simply carelessness:
 | Fixing code introduces bugs | a whitespace-insensitive trim script silently deleted "Trimester 9, Project 3" from the report |
 
 The response was to stop reviewing and start executing. `tests/test_suite.py`
-runs 76 checks against every module, and `tests/test_mutations.py`
+ran 76 checks against every module at this point, and `tests/test_mutations.py`
 reintroduces each bug this project actually shipped and asserts the suite
 fails on it.
 
@@ -426,7 +439,7 @@ caught  loss forensics was off by one in diffs
 caught  plain .pgn fed to the zstd reader
 caught  value head could return values outside [-1, 1]
 
-6/6 historical bugs are caught by the suite
+6/6 historical bugs are caught by the suite   (as of this round)
 ```
 
 ## Reproducing
