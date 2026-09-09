@@ -74,8 +74,8 @@ def load_net(path):
 
 def is_model_checkpoint(name):
     """Only true weight files — not anchor/replay data blobs."""
-    return (name.startswith("iter_") or name == "latest.pt") and \
-        name.endswith(".pt")
+    return (name.startswith("iter_") or name.startswith("taught_")
+            or name in ("latest.pt", "best.pt")) and name.endswith(".pt")
 
 
 def latest_checkpoint():
@@ -96,6 +96,8 @@ def latest_checkpoint():
     if bests:
         return max(bests, key=os.path.getmtime)
 
+    # taught_*.pt is a user-personalised branch, not a training result,
+    # so it is selectable in the UI but never the default.
     iters = [p for d in run_dirs
              for p in glob.glob(str(d / "iter_*.pt"))
              if re.match(r"iter_\d+\.pt$", os.path.basename(p))]
@@ -482,7 +484,11 @@ def _teach_worker(ckpt_path):
                 "no finished games to learn from - only games saved with a "
                 "final result (win/loss/draw) can be trained on")
         cfg = Config()
-        net = load_net(ckpt_path)
+        # Train a private copy: load_net() memoises by path, so training the
+        # object it returns would mutate the network every other request is
+        # reading - mid-search, and including batch-norm running stats.
+        import copy
+        net = copy.deepcopy(load_net(ckpt_path))
 
         _teach_job["step"] = "training on your moves"
         optimizer = torch.optim.Adam(net.parameters(), lr=3e-4, weight_decay=1e-4)
@@ -503,17 +509,25 @@ def _teach_worker(ckpt_path):
             if s % 25 == 0:
                 _teach_job["step"] = f"training ({s}/{steps} steps)"
 
-        m = re.match(r"iter_(\d+)\.pt", os.path.basename(ckpt_path))
-        nxt = (int(m.group(1)) + 1) if m else 1
-        out = CKPT_DIR / f"iter_{nxt}.pt"
+        # Taught models get their own series next to the checkpoint they
+        # came from. They are not training iterations, and naming them
+        # iter_N.pt both misrepresents them and overwrites real checkpoints.
+        net.eval()
+        src = Path(ckpt_path)
+        n = 1
+        while (src.parent / f"taught_{n}.pt").exists():
+            n += 1
+        out = src.parent / f"taught_{n}.pt"
         torch.save({"model_state_dict": net.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
-                    "iteration": nxt}, out)
+                    "taught_from": src.name,
+                    "iteration": n}, out)
         with _model_lock:
-            _net_cache.pop(ckpt_path, None)
             _net_cache.pop(str(out), None)
         _teach_job["results"] = {"saved": out.name, "positions": len(X),
-                                 "steps": steps}
+                                 "steps": steps,
+                                 "taught_from": src.name,
+                                 "path": str(out)}
     except Exception as exc:  # noqa: BLE001
         _teach_job["error"] = str(exc)
     finally:

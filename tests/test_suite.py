@@ -397,6 +397,85 @@ def test_checkpoint_discovery():
 
 
 # =====================================================================
+def test_dashboard_internals():
+    """In-process checks of dashboard logic that the HTTP tests miss."""
+    section("dashboard: checkpoint handling")
+    import copy
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "srv_under_test", ROOT / "dashboard" / "server.py")
+    srv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(srv)
+
+    # what counts as a selectable checkpoint
+    for name, want in [("iter_400.pt", True), ("best.pt", True),
+                       ("latest.pt", True), ("taught_1.pt", True),
+                       ("anchor_data.pt", False), ("replay_buffer.pt", False),
+                       ("notes.txt", False)]:
+        check(f"is_model_checkpoint({name}) is {want}",
+              srv.is_model_checkpoint(name) is want)
+
+    ck = srv.latest_checkpoint()
+    if ck:
+        base = Path(ck).name
+        # a taught model is a personalised branch, not a training result
+        check("the default checkpoint is never a taught_*.pt",
+              not base.startswith("taught_"), base)
+        has_best = bool(list((ROOT / "runs").glob("*/checkpoints/best.pt"))) \
+            or (ROOT / "checkpoints" / "best.pt").exists()
+        if has_best:
+            check("a gated best.pt is preferred as the default",
+                  base == "best.pt", base)
+
+        # load_net memoises, so teaching must train a copy - training the
+        # returned object would mutate what every request is reading
+        a = srv.load_net(ck)
+        b = srv.load_net(ck)
+        check("load_net memoises by path", a is b)
+
+        # Exercise the real teach path: it must not train the cached object.
+        # Asserting that deepcopy works would only test deepcopy.
+        saved_games = srv.MY_GAMES.read_bytes() if srv.MY_GAMES.exists() else None
+        before = a.value_head.fc2.weight.detach().clone()
+        produced = None
+        try:
+            srv.MY_GAMES.parent.mkdir(parents=True, exist_ok=True)
+            srv.MY_GAMES.write_text(
+                '[Event "t"]\n[Result "0-1"]\n\n'
+                '1. f3 e5 2. g4 Qh4# 0-1\n\n', encoding="utf-8")
+            srv._teach_job.update({"running": True, "step": "", "results": None,
+                                   "error": None})
+            srv._teach_worker(ck)
+            err = srv._teach_job["error"]
+            check("teach run completed without error", err is None, str(err))
+            res = srv._teach_job["results"] or {}
+            produced = res.get("path")
+            check("teach writes a taught_*.pt, not an iter_*.pt",
+                  str(res.get("saved", "")).startswith("taught_"),
+                  str(res.get("saved")))
+            check("teach records which checkpoint it came from",
+                  res.get("taught_from") == Path(ck).name, str(res.get("taught_from")))
+            check("teaching does NOT mutate the cached network",
+                  torch.equal(before, a.value_head.fc2.weight.detach()),
+                  "the shared net was trained in place")
+        finally:
+            if produced and Path(produced).exists():
+                Path(produced).unlink()
+            if saved_games is None:
+                srv.MY_GAMES.unlink(missing_ok=True)
+            else:
+                srv.MY_GAMES.write_bytes(saved_games)
+
+    section("dashboard: log parsing")
+    stats = srv.parse_stats()
+    for key in ("loss", "lr", "evals", "gate", "baseline", "selfplay_positions"):
+        check(f"parse_stats returns '{key}'", key in stats)
+    check("gate entries carry a promoted flag",
+          all("promoted" in g for g in stats["gate"]), str(stats["gate"][:1]))
+
+
+# =====================================================================
 def test_forensics():
     section("loss forensics")
     from analyze_losses import material, worst_blunder
@@ -431,7 +510,8 @@ def test_forensics():
 def main():
     tests = [test_utils, test_move_encoding, test_model, test_evaluate,
              test_mcts, test_train_step, test_selfplay_samples,
-             test_pgn_reader, test_checkpoint_discovery, test_forensics]
+             test_pgn_reader, test_checkpoint_discovery,
+             test_dashboard_internals, test_forensics]
     for t in tests:
         try:
             t()

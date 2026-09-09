@@ -247,6 +247,33 @@ cheapest available way to strengthen the underpowered acceptance gate.
 
 Default is **off**, so the published experiments reproduce exactly.
 
+## 8. Dashboard teach-me loop: two bugs, one of them a regression
+
+Found by probing what the test suite did not yet cover.
+
+**The teach loop trained the shared network in place.** `load_net()`
+memoises by path, so `net = load_net(ckpt)` returns the object every other
+request is reading. The worker then ran 20-400 gradient steps on it without
+holding `_model_lock`. Measured on the live server: the value for a fixed
+position moved **+0.1622 to -0.0090** mid-run, and batch-norm running
+statistics were permanently altered. Anyone playing during a teach run was
+served weights shifting underneath the search. It now trains a deep copy.
+
+**Output naming was a regression from an earlier fix.** The worker derived
+its filename with `re.match(r"iter_(\d+)\.pt", ...)`. Once
+`latest_checkpoint()` was changed to prefer a gated `best.pt`, that regex
+stopped matching, `nxt` fell back to `1`, and every teach wrote
+`checkpoints/iter_1.pt` - a name claiming to be training iteration 1, in the
+wrong directory, silently overwritten each time. Taught models now get their
+own `taught_N.pt` series beside the checkpoint they came from, recording
+`taught_from`, listed in the UI but never chosen as the default opponent.
+
+Both are now in the mutation set, which stands at **9/9 caught**. Adding
+them exposed one more hole first: the original test asserted that
+`copy.deepcopy` produces an independent object, which tests `deepcopy`
+rather than the teach code. It now calls `_teach_worker` directly and
+asserts the cached network is unchanged.
+
 ## 7. Why the bugs kept surfacing
 
 Four rounds of review found bugs one at a time. The pattern is worth

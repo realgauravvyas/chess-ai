@@ -54,6 +54,23 @@ MUTATIONS = [
      "model.py",
      "        return torch.tanh(self.fc2(v))",
      "        return self.fc2(v) * 2.0"),
+
+    ("taught models were not listed as selectable checkpoints",
+     "dashboard/server.py",
+     '    return (name.startswith("iter_") or name.startswith("taught_")\n'
+     '            or name in ("latest.pt", "best.pt")) and name.endswith(".pt")',
+     '    return name.startswith("iter_") and name.endswith(".pt")'),
+
+    ("the default opponent ignored gated best.pt checkpoints",
+     "dashboard/server.py",
+     '    bests = [p for d in run_dirs\n'
+     '             for p in glob.glob(str(d / "best.pt"))]',
+     '    bests = []  # pretend no gated winner exists'),
+
+    ("the teach loop trained the shared cached network in place",
+     "dashboard/server.py",
+     "        net = copy.deepcopy(load_net(ckpt_path))",
+     "        net = load_net(ckpt_path)"),
 ]
 
 
