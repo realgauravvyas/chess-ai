@@ -1,6 +1,7 @@
 # Chess AI — supervised pretraining + self-play reinforcement learning
 
 ### ▶ [Play it in your browser](https://realgauravvyas.github.io/chess-ai/)
+### 🎬 [Watch the project walkthrough](https://youtu.be/MQH5u9tvdEM)
 
 No install, no server — the network and the Monte Carlo Tree Search both run
 client-side. Give it a second on the first move while the 3 MB model loads.
