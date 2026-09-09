@@ -471,6 +471,27 @@ def test_checkpoint_discovery():
 
 
 # =====================================================================
+def test_browser_engine():
+    """The GitHub Pages demo must encode boards exactly like Python.
+
+    It runs the same network but builds the tensor and the 4672 action
+    indices in JavaScript. A mismatch would feed the network an input it
+    never saw and look like weak play rather than a bug.
+    """
+    section("browser engine encoding")
+    import subprocess
+    r = subprocess.run([sys.executable, str(ROOT / "tests" / "test_pages_encoding.py")],
+                       cwd=str(ROOT), capture_output=True, text=True, timeout=600)
+    tail = (r.stdout.strip().splitlines() or ["no output"])[-1]
+    if "skip:" in r.stdout:
+        if VERBOSE:
+            print(f"skip  browser encoding ({tail})")
+        return
+    check(f"browser encoding matches Python: {tail}", r.returncode == 0,
+          (r.stdout + r.stderr)[-600:])
+
+
+# =====================================================================
 def test_frontend_js():
     """Board-coordinate and FEN helpers in dashboard/static/index.html.
 
@@ -760,7 +781,8 @@ def main():
              test_mcts, test_train_step, test_selfplay_samples,
              test_pgn_reader, test_download, test_checkpoint_discovery,
              test_cli_entry_points, test_training_wrapper,
-             test_dashboard_internals, test_frontend_js, test_forensics]
+             test_dashboard_internals, test_frontend_js,
+             test_browser_engine, test_forensics]
     for t in tests:
         try:
             t()

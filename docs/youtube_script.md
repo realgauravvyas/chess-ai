@@ -257,6 +257,9 @@ And the lesson I'll take into everything I build after this: **measure the
 thing you actually care about, and verify the measurement itself.** A
 falling loss curve is a hypothesis. The head-to-head match is the evidence.
 
+You can play it yourself in your browser at
+https://realgauravvyas.github.io/chess-ai/ --- the whole engine runs client-side, no server.
+
 Code, full results and the report are linked below. Thanks for watching.
 
 ---

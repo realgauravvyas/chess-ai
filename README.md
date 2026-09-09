@@ -92,6 +92,10 @@ of strength. See [RESULTS.md](RESULTS.md).
 
 ## Playing
 
+**Try it in your browser, no install:** https://realgauravvyas.github.io/chess-ai/
+The network and the search both run client-side.
+
+
 ```powershell
 python dashboard\server.py       # http://127.0.0.1:5000
 python play.py --color black --sims 800
