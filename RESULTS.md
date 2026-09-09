@@ -247,6 +247,37 @@ cheapest available way to strengthen the underpowered acceptance gate.
 
 Default is **off**, so the published experiments reproduce exactly.
 
+## 13. An interrupted download was indistinguishable from a finished one
+
+`download()`'s docstring claimed "simple resume support". It had none: any
+file that existed and was non-empty was accepted. A download stopped by
+Ctrl-C, a dropped connection or a full disk left a truncated `.zst` that the
+next run reported as `using existing 7.1 MB` and handed to the parser.
+
+Measured on a real copy truncated to 40%:
+
+```
+[parse] done: 402 games -> 0 positions (1030 skipped)
+```
+
+The zstd stream breaks and python-chess rejects the garbage as illegal SAN -
+and `build_dataset` returns that empty result **without raising**. The
+dangerous case is not 40% but 95%: the run would train on a silently short
+dataset with nothing to indicate it. That is the evaluation-metric failure
+mode again - quiet, plausible, wrong.
+
+Fixed three ways: bytes go to a `.part` file and are renamed only after the
+size matches `Content-Length`, so an interrupted run cannot leave something
+that looks finished; an existing file is size-checked against the server via
+HEAD before being reused; and an empty dataset now aborts with a clear
+message instead of failing later inside the optimiser.
+
+Verified against a local HTTP server: complete downloads land correctly with
+no `.part` left behind, a truncated file on disk is re-fetched, a verified
+file is reused rather than re-downloaded, and a 404 writes nothing. The
+project's own data files were checked and are intact (17.8 MB, matching the
+server).
+
 ## 12. The front end was never functionally tested
 
 `dashboard/static/index.html` is ~700 lines of JavaScript that had only ever

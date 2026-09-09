@@ -104,6 +104,11 @@ MUTATIONS = [
      "dashboard/static/index.html",
      "  return S.flipped ? [r,7-f] : [7-r,f];",
      "  return S.flipped ? [r,f] : [7-r,f];"),
+
+    ("a truncated download was accepted as complete",
+     "pretrain_supervised.py",
+     "        if have == want:",
+     "        if True:  # accept any non-empty file"),
 ]
 
 

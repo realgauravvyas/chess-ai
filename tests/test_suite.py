@@ -384,6 +384,80 @@ def test_pgn_reader():
 
 
 # =====================================================================
+def test_download():
+    """download() must never leave a partial file that looks complete.
+
+    The old version accepted any non-empty file. A copy truncated to 40%
+    parsed to 0 positions from 402 games without raising; truncate at 95%
+    instead and the dataset is silently short. Served here from a local
+    HTTP server so the real code path runs.
+    """
+    section("pretrain: download integrity")
+    import functools
+    import http.server
+    import socketserver
+    import tempfile
+    import threading
+
+    from pretrain_supervised import download, remote_size
+
+    with tempfile.TemporaryDirectory() as d:
+        served = Path(d) / "served"
+        served.mkdir()
+        payload = b"x" * 500_000
+        (served / "data.bin").write_bytes(payload)
+
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler,
+                                    directory=str(served))
+        handler.log_message = lambda *a, **k: None
+        with socketserver.TCPServer(("127.0.0.1", 0), handler) as httpd:
+            port = httpd.server_address[1]
+            t = threading.Thread(target=httpd.serve_forever, daemon=True)
+            t.start()
+            url = f"http://127.0.0.1:{port}/data.bin"
+            try:
+                check("remote_size reads Content-Length",
+                      remote_size(url) == len(payload), str(remote_size(url)))
+
+                dest = Path(d) / "out.bin"
+                download(url, dest)
+                check("a complete download lands at the destination",
+                      dest.exists() and dest.stat().st_size == len(payload),
+                      str(dest.stat().st_size if dest.exists() else "missing"))
+                check("no .part file is left behind",
+                      not dest.with_name(dest.name + ".part").exists())
+
+                # a truncated file on disk must be re-fetched, not accepted
+                dest.write_bytes(payload[:100_000])
+                download(url, dest)
+                check("a truncated existing file is re-downloaded",
+                      dest.stat().st_size == len(payload),
+                      str(dest.stat().st_size))
+
+                # a complete file is reused rather than fetched again
+                mtime = dest.stat().st_mtime
+                download(url, dest)
+                check("a verified file is reused, not re-fetched",
+                      dest.stat().st_mtime == mtime)
+
+                # an unreachable server must not silently succeed
+                bad = Path(d) / "nope.bin"
+                try:
+                    download(f"http://127.0.0.1:{port}/missing.bin", bad)
+                    check("a 404 does not produce a file", not bad.exists())
+                except Exception:
+                    check("a 404 raises rather than writing a partial file",
+                          not bad.exists())
+            finally:
+                httpd.shutdown()
+
+    # and an empty dataset must stop the run, not fail inside the optimiser
+    src = (ROOT / "pretrain_supervised.py").read_text(encoding="utf-8")
+    check("an empty dataset aborts with a clear message",
+          "no positions parsed" in src)
+
+
+# =====================================================================
 def test_checkpoint_discovery():
     section("checkpoint discovery")
     import analyze_losses
@@ -684,7 +758,7 @@ def test_forensics():
 def main():
     tests = [test_utils, test_move_encoding, test_model, test_evaluate,
              test_mcts, test_train_step, test_selfplay_samples,
-             test_pgn_reader, test_checkpoint_discovery,
+             test_pgn_reader, test_download, test_checkpoint_discovery,
              test_cli_entry_points, test_training_wrapper,
              test_dashboard_internals, test_frontend_js, test_forensics]
     for t in tests:

@@ -118,7 +118,7 @@ the network alternates colors silently destroys the metric — that bug made
 ## Testing
 
 ```powershell
-python tests	est_suite.py           # 116 checks across every module
+python tests	est_suite.py           # 123 checks across every module
 python tests	est_mutations.py       # proves the suite catches real bugs
 python dashboard	est_dashboard.py   # 21 end-to-end API tests (server must be up)
 python experiments	est_forensics.py # blunder attribution, 4 known-answer cases

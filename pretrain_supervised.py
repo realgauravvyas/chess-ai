@@ -44,16 +44,47 @@ DEFAULT_URLS = ("https://database.lichess.org/standard/"
                 "lichess_db_standard_rated_2013-02.pgn.zst")
 
 
+def remote_size(url):
+    """Content-Length from a HEAD request, or None if unavailable."""
+    req = urllib.request.Request(url, method="HEAD",
+                                 headers={"User-Agent": "chess-ai-pretrain"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            n = int(resp.headers.get("Content-Length", 0))
+            return n or None
+    except Exception:  # noqa: BLE001 - offline, proxy, no HEAD support
+        return None
+
+
 def download(url, dest: Path):
-    """Download with simple resume support."""
+    """Download `url` to `dest`, verifying the transfer completed.
+
+    A partial file is never left at `dest`: bytes go to a .part sibling and
+    are renamed only after the size matches Content-Length. An existing file
+    is size-checked against the server before being reused, because a
+    truncated .zst parses to a silently short dataset rather than an error.
+    """
     dest.parent.mkdir(parents=True, exist_ok=True)
+
     if dest.exists() and dest.stat().st_size > 0:
-        print(f"[data] using existing {dest} ({dest.stat().st_size/1e6:.1f} MB)")
-        return
+        have = dest.stat().st_size
+        want = remote_size(url)
+        if want is None:
+            print(f"[data] using existing {dest.name} ({have/1e6:.1f} MB; "
+                  f"could not verify size against the server)")
+            return
+        if have == want:
+            print(f"[data] using existing {dest.name} ({have/1e6:.1f} MB, "
+                  f"size verified)")
+            return
+        print(f"[data] {dest.name} is {have/1e6:.1f} MB but the server reports "
+              f"{want/1e6:.1f} MB - re-downloading (previous run interrupted?)")
+
+    part = dest.with_name(dest.name + ".part")
     req = urllib.request.Request(url, headers={"User-Agent": "chess-ai-pretrain"})
     print(f"[data] downloading {url}")
     t0 = time.time()
-    with urllib.request.urlopen(req, timeout=60) as resp, open(dest, "wb") as out:
+    with urllib.request.urlopen(req, timeout=60) as resp, open(part, "wb") as out:
         total = int(resp.headers.get("Content-Length", 0))
         done = 0
         while True:
@@ -67,6 +98,13 @@ def download(url, dest: Path):
                 rate = done / 1e6 / max(1e-9, time.time() - t0)
                 print(f"\r[data] {done/1e6:7.1f}/{total/1e6:.1f} MB "
                       f"({pct:4.1f}%) {rate:.1f} MB/s", end="", flush=True)
+
+    if total and done != total:
+        part.unlink(missing_ok=True)
+        raise IOError(f"{dest.name}: got {done} bytes, expected {total}. "
+                      f"Download incomplete; nothing was written to "
+                      f"{dest.name}.")
+    os.replace(part, dest)
     print(f"\n[data] downloaded in {time.time()-t0:.0f}s")
 
 
@@ -314,6 +352,9 @@ def main():
     else:
         X, Y, Z, seeds = merge([_parse_worker(jobs[0])])
     print(f"[data] dataset ready: {len(X)} positions in {time.time()-t0:.0f}s")
+    if len(X) == 0:
+        sys.exit("no positions parsed. The PGN files are empty, truncated or "
+                 "fully excluded by --min-elo; check data/ and try again.")
 
     if seeds:
         import json
