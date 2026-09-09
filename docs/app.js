@@ -5,9 +5,11 @@
  */
 const $ = id => document.getElementById(id);
 
+// Solid glyphs for BOTH colours, tinted in CSS. The outline set
+// (U+2654-2659) renders inconsistently across fonts and washes out
+// on a dark page, which made the two sides indistinguishable.
 const GLYPH = {
-  wp: "♙", wn: "♘", wb: "♗", wr: "♖", wq: "♕", wk: "♔",
-  bp: "♟", bn: "♞", bb: "♝", br: "♜", bq: "♛", bk: "♚",
+  p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚",
 };
 
 const S = {
@@ -69,7 +71,12 @@ function render() {
       if (inCheck && piece && piece.type === "k" && piece.color === turn)
         cell.classList.add("check");
 
-      if (piece) cell.textContent = GLYPH[piece.color + piece.type];
+      if (piece) {
+        const el = document.createElement("span");
+        el.className = "piece " + piece.color;
+        el.textContent = GLYPH[piece.type];
+        cell.appendChild(el);
+      }
 
       if (S.targets.includes(name)) {
         if (piece) cell.classList.add("cap");

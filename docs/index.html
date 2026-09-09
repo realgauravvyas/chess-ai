@@ -12,7 +12,7 @@
   --bg:#10141c; --panel:#181e29; --panel2:#1f2735; --border:#2a3345;
   --text:#dfe6f1; --muted:#8a97ab; --accent:#4f8cff; --green:#43b581;
   --red:#e05667; --amber:#e8b64c;
-  --sq-light:#eeeed2; --sq-dark:#769656; --sq:66px;
+  --sq-light:#e9e6d8; --sq-dark:#7c9b62; --sq:66px;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);
@@ -38,6 +38,17 @@ main{display:grid;grid-template-columns:auto 340px;gap:18px;
   border:1px solid var(--border)}
 .sq{position:relative;display:flex;align-items:center;justify-content:center;
   font-size:calc(var(--sq) * .78);line-height:1;cursor:pointer;user-select:none}
+/* Both sides use the solid glyph; the colour and the outline come from
+   here, so the two are distinguishable whatever font is available. */
+.piece{line-height:1;pointer-events:none}
+.piece.w{color:#fbfbf8;
+  text-shadow:0 0 1px #1b1b1b, 1px 0 0 #1b1b1b, -1px 0 0 #1b1b1b,
+              0 1px 0 #1b1b1b, 0 -1px 0 #1b1b1b, 1px 1px 0 #1b1b1b,
+              -1px -1px 0 #1b1b1b, 1px -1px 0 #1b1b1b, -1px 1px 0 #1b1b1b}
+.piece.b{color:#20242b;
+  text-shadow:0 0 1px #f2f2ee, 1px 0 0 #f2f2ee, -1px 0 0 #f2f2ee,
+              0 1px 0 #f2f2ee, 0 -1px 0 #f2f2ee, 1px 1px 0 #f2f2ee,
+              -1px -1px 0 #f2f2ee, 1px -1px 0 #f2f2ee, -1px 1px 0 #f2f2ee}
 .sq.light{background:var(--sq-light)} .sq.dark{background:var(--sq-dark)}
 .sq.sel{box-shadow:inset 0 0 0 4px rgba(79,140,255,.85)}
 .sq.last{box-shadow:inset 0 0 0 4px rgba(232,182,76,.55)}
