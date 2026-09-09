@@ -50,7 +50,7 @@ for need, where in (("23035010370", "roll number"),
                     ("g.vyas@op.iitg.ac.in", "email"),
                     ("Gaurav Vyas", "name"),
                     ("Trimester 9", "trimester"),
-                    ("Project 3", "project number")):
+                    ("Term Project Report", "report type")):
     if need not in t:
         problems.append(("MISSING REQUIRED FIELD", f"{where}: {need!r}"))
 
