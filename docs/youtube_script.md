@@ -1,289 +1,211 @@
-# YouTube Script — Learning Chess Without Chess Knowledge
+# Presentation script — Learning Chess Without Chess Knowledge
 
-**Target length:** 10 minutes
-**Word count:** ~1,500 spoken words (≈145 wpm)
-**Presenter:** Gaurav Vyas — Trimester 9, B.Sc. (Hons) DSAI, IIT Guwahati
+**Length:** ~8 minutes — about 890 words of speech, plus pauses and
+window switches. Per-section timings below sum to 8:15.
+**Gaurav Vyas** — Trimester 9, B.Sc. (Hons) DSAI, IIT Guwahati
 
-Screen directions are in *[italics]*. Everything else is spoken.
-
-> **All numbers are final and measured**, reproducible from `experiments/`
-> and `tests/` in the repository.
+> **You only ever show four things:** the slide deck, the live demo, your
+> local dashboard, and the GitHub repo. Every number below is printed on the
+> slide beside it, so you never need to open the report or a terminal.
 >
-> **For the dashboard shots:** the `training: LIVE` indicator only animates
-> while a run is in progress. To film it live, start a short run first:
+> **Dashboard note:** the `training: LIVE` indicator only animates during a
+> run. To show it live, start a short one first:
 > `python run_training.py --run-dir runs/demo --seed-from checkpoints_v7_baseline/iter_200.pt 6 --sims 40`
 
 ---
 
-## 0:00 — 0:45 · Hook
+## Open on the LIVE DEMO · 30s
 
-*[On screen: the dashboard, a game in progress, the model thinking]*
+*Play one move, let it reply.*
 
-This is a chess engine I built from scratch. A neural network with 760,000
-parameters — about a thousand times smaller than AlphaZero — running on a
-single desktop.
+This is a chess engine I built from scratch. 760,000 parameters, running
+right here in the browser — no server.
 
-*[On screen: the model plays e4, then a tactical capture]*
+It learned chess with no opening book, no piece values and no evaluation
+function. Just the rules and data.
 
-It learned chess with no opening book, no piece values, and no evaluation
-function. Just the rules and data. It opens with real theory, wins material,
-and finds forced mates.
-
-But the part I'm most pleased with isn't the engine. It's the measurement
-system I built around it — because in self-play reinforcement learning,
-knowing whether your model is actually improving is a genuinely hard problem,
-and I ended up solving it.
+But the engine isn't the part I'm most pleased with. It's the measurement
+system around it — because in self-play learning, knowing whether your model
+is *actually* improving turns out to be the hard problem.
 
 ---
 
-## 0:45 — 1:45 · What I built
+## SLIDE 1 — What it is · 40s
 
-*[On screen: pipeline diagram — Figure 1 from the report]*
+This follows **AlphaZero**, the system **DeepMind** published in 2017, which
+learned chess, shogi and Go purely by playing itself and beat the strongest
+engines in the world.
 
-The approach is **AlphaZero's** — the system **DeepMind** published in
-2017, which learned chess, shogi and Go purely by playing against itself and
-beat the strongest engines in the world. No human games, no opening theory,
-no hand-written evaluation. Just the rules.
+I reproduce that recipe at roughly **one millionth of the compute** — they
+used five thousand TPUs, I used one desktop.
 
-I'm reproducing that recipe at roughly **one millionth of the compute**, to
-see which parts of it still hold at desktop scale.
-
-The architecture is theirs. One network with two outputs: a **policy head**
-that proposes plausible moves, and a **value head** that judges who's
-winning.
-
-The network alone isn't a chess player. It becomes one inside **Monte Carlo
-Tree Search**, which uses those two outputs to explore promising lines and
-returns a move stronger than the network would pick on its own.
-
-Then you train the network on the search's own output. Better network,
-better search, better network. That's the loop.
-
-I built it in two stages: first learn from humans, then improve through
-self-play. Plus a browser dashboard, a full evaluation suite, and a test
-system — the whole thing runs end to end on one machine.
+One network, two heads: a **policy head** that proposes moves and a **value
+head** that judges who's winning. The network alone isn't a player. **Monte
+Carlo Tree Search** turns it into one by using both heads to look ahead.
 
 ---
 
-## 1:45 — 3:00 · Representation and architecture
+## SLIDE 2 — Board into network · 40s
 
-*[On screen: 18-plane board encoding graphic]*
+First a chessboard has to become a tensor. Each position is **18 planes of
+8 by 8** — pieces, castling rights, en passant, side to move.
 
-Before any learning happens, a chessboard has to become a tensor.
-
-I encode each position as **18 planes of 8 by 8**. Twelve for piece
-placement — six piece types, two colours. Four for castling rights. One for
-en passant. One for side to move.
-
-*[On screen: 4672-action encoding]*
-
-The output is the harder half. Chess doesn't have a fixed move list, so I
-use the Leela Chess Zero scheme: each of the 64 origin squares gets 73 move
-types — 56 queen-style moves, 8 knight moves, 9 underpromotions. **4,672
-actions**, and every legal chess move maps to exactly one of them.
-
-I verified that with a round-trip test across thousands of positions: every
-move encodes and decodes back to itself, zero collisions.
-
-*[On screen: network architecture]*
-
-The network is a residual convolutional network — ten residual blocks at 64
-channels, then the two heads. 760,717 parameters, small enough to train
-overnight.
+The output is harder, because chess has no fixed move list. Each of the 64
+origin squares gets 73 move types, giving **4,672 actions**, and every legal
+move maps to exactly one. Round-trip tested across thousands of positions:
+zero collisions.
 
 ---
 
-## 3:00 — 4:15 · Stage 1: learning from humans
+## SLIDE 3 — Learning from humans · 45s
 
-*[On screen: Lichess database, then the loss curve]*
+Stage one is imitation. I streamed the Lichess database and kept only games
+where **both players were rated 1750 or above** — about 12% of games. Final
+dataset: **676,648 positions**.
 
-Stage one is supervised learning. I streamed monthly game archives from the
-Lichess open database and applied a quality filter: **both** players rated
-1750 or above. That keeps about 12% of games — I wanted the network
-imitating competent play, not average play. Final dataset: **676,648
-positions**.
+Policy cross-entropy fell from **3.9 to 2.06**. Across 4,672 options that's
+roughly 13% of the probability mass on the exact move a strong human chose.
 
-*[On screen: pretrain_loss figure]*
-
-Policy cross-entropy dropped from 3.9 to **2.06**. Across 4,672 possible
-actions, that means the model puts roughly 13% of its probability mass on
-the exact move a strong human chose. The uniform baseline is 3.4, so that's
-a large, real gain.
-
-*[On screen: the tactical probes running]*
-
-And it transfers to actual play. It opens **e4** and **d4**. It answers e4
-with e5 or the Sicilian. It captures a hanging queen. It finds mate in one.
-Against a random opponent it scores **85 to 90 percent**.
-
-That's a genuinely competent small model, trained in minutes on one GPU.
+And it transfers: it opens e4 and d4, captures a hanging queen, finds mate in
+one, and scores **85 to 90 percent** against a random opponent.
 
 ---
 
-## 4:15 — 5:30 · Stage 2, and the measurement problem
+## SLIDE 4 — The loss curve · 45s
 
-*[On screen: self-play running, six workers spinning]*
+Stage two: the network plays itself and trains on its own search results.
 
-Stage two is where it gets interesting. The network plays thousands of games
-against itself and trains on its own search results.
+The training loss came down beautifully — **2.36 to 1.85**, monotonic.
 
-*[On screen: loss curve falling smoothly]*
-
-And the training loss came down beautifully. 2.36 down to 1.85, monotonic.
-
-*[On screen: hold on the loss curve]*
-
-Here's the thing I want to highlight, because it's the core insight of the
-whole project. **That loss curve cannot tell you whether the model is
-getting better at chess.**
-
-In supervised learning, your loss is measured against ground truth. In
-self-play, the model generates its own targets. So minimising the loss
-proves the model agrees with itself — it says nothing about playing
-strength. The two can move in completely different directions.
-
-So I built a proper evaluation system: head-to-head matches, alternating
-colours, randomised openings, scored from the network's own perspective,
-with confidence intervals.
+Here's the core insight. **That curve cannot tell you the model is getting
+better at chess.** In supervised learning the loss is measured against ground
+truth. In self-play the model generates its own targets — so minimising it
+only proves the model agrees with *itself*.
 
 ---
 
-## 5:30 — 6:45 · What the measurements revealed
+## SLIDE 5 — The metric was measuring nothing · 40s
 
-*[On screen: head-to-head match running]*
+Look at the evaluation score. Fifty percent. **159 measurements across two
+training runs, all pinned at fifty.**
 
-With that in place, I asked the only question that matters: take the model
-after 300 iterations of self-play, and play it against the model it started
-from.
+The network played half its games as white and half as black — but the score
+counted only *white's* wins. Every game it won as black was recorded as a
+loss.
 
-*[On screen: `v5 iter_500  2.5 — 5.5  pretrained iter_200`]*
-
-Two and a half to five and a half. **Self-play had made it weaker** — while
-the loss curve fell the entire time.
-
-That's a real experimental finding, and it's only visible because the
-measurement was built correctly. So I went hunting for the cause.
-
-*[On screen: sims_scaling figure]*
-
-First hypothesis: maybe the search is too weak to teach the network. I
-tested it — MCTS against the network's own raw policy, at different
-simulation counts. Search wins comfortably, 79% at just 40 simulations. So
-that hypothesis was wrong, and I could rule it out with data.
-
-The real cause was subtler. At 40 simulations spread over about 30 legal
-moves, that's **1.3 visits per move**. The best move the search finds is
-excellent — that's what this graph shows. But training uses the *whole
-visit distribution*, and a histogram with 1.3 samples per bucket is
-dominated by sampling noise.
-
-*[On screen: the mirrored board with the king on d1]*
-
-I also found a data-augmentation issue: mirroring the board left-to-right
-without swapping castling rights produces positions that can't occur in
-chess. Chess isn't mirror-symmetric — castling breaks it. AlphaZero avoids
-this augmentation for exactly that reason.
+So I rebuilt it: head-to-head matches, alternating colours, randomised
+openings, scored from the network's own side, with confidence intervals.
 
 ---
 
-## 6:45 — 8:00 · The engineering solution
+## SLIDE 6 — The real result · 40s
 
-*[On screen: gating diagram]*
+Then I asked the only question that matters: take the model after 300
+iterations of self-play and play it against the model it started from.
 
-So I rebuilt the training loop around a guarantee.
+**Two and a half, to five and a half.** Self-play had made it *weaker* —
+while the loss fell the whole way.
 
-The key addition is **acceptance gating**, from AlphaGo Zero. Self-play
-always generates games from the best weights so far. When training produces
-new weights, they don't get deployed automatically — they have to play a
-head-to-head match against the current champion and win.
-
-*[On screen: `gate: candidate 43.8% vs best -> rejected`]*
-
-There's a real gate from my run. That candidate lost its match, so it never
-reached the deployed model.
-
-*[On screen: the 40-game result]*
-
-Then I ran the decisive test — a 40-game match, not eight, because at 40
-games the error bars are small enough to trust.
-
-**46.2 percent** against its starting point, confidence interval 37 to 55.
-Statistically level.
-
-And here's the win: the uncorrected run scored **31 percent** — clearly
-worse. The candidates the gate kept rejecting averaged 42 percent, p equals
-0.004. Self-play was still pulling the network down, and **gating caught
-every one of those and kept them out of the deployed model.**
-
-The safeguard did exactly what I designed it to do.
+That's a real experimental finding, and it is only visible because the
+measurement was rebuilt properly.
 
 ---
 
-## 8:00 — 9:00 · Making it verifiable
+## SLIDE 7 — Why · 50s
 
-*[On screen: the test suite running]*
+First hypothesis: maybe the search is too weak to teach the network. I tested
+it — search beats the raw policy **79% at just 40 simulations**. Ruled out,
+with data.
 
-The last piece is making all of this reproducible.
+The real cause is on this graph. 40 simulations over about 30 legal moves is
+**1.3 visits per move**. The best move it finds is excellent, but training
+uses the *whole distribution*, and a histogram with 1.3 samples per bucket is
+mostly noise.
 
-I wrote a test suite — **124 checks** covering every module: board encoding,
-move encoding, network shapes, search behaviour, evaluation arithmetic, the
-data pipeline, and the browser front end.
-
-*[On screen: `15/15 historical bugs are caught by the suite`]*
-
-And then something I think is the most useful engineering idea in the
-project: **mutation testing**. A passing test suite proves nothing if it
-never exercises the code that matters. So I wrote a harness that
-deliberately reintroduces each defect the project ever had, and checks the
-tests fail on every one. Fifteen out of fifteen.
-
-*[On screen: the dashboard, playing a game, eval bar moving]*
-
-Plus the dashboard: play any checkpoint with the mouse, watch the search's
-principal variation and move probabilities, follow training curves live, and
-even fine-tune the model on your own games.
+I also found a data bug: mirroring the board without swapping castling rights
+creates positions that cannot exist in chess. Chess isn't mirror-symmetric —
+castling breaks it.
 
 ---
 
-## 9:00 — 9:50 · Close
+## SLIDE 8 — The fix · 50s
 
-*[On screen: the report, the repo, the dashboard]*
+So I rebuilt the loop around **acceptance gating**, from AlphaGo Zero.
+Self-play always generates from the best weights so far, and new weights are
+deployed only if they win a match against the current champion.
 
-So what came out of this?
+The decisive test was a **40-game match** — not eight, because at 40 games the
+error bars are small enough to trust.
 
-A working chess engine that learned from 677,000 human positions and plays
-real chess. A training system with a **provable** safeguard against
-regression. An evaluation methodology rigorous enough to detect something a
-loss curve fundamentally cannot show. And a test suite that proves itself.
-
-The finding I'd point to is this: running DeepMind's recipe at this
-compute scale, self-play reinforcement learning doesn't add to a
-well-pretrained network — and I can
-show you exactly why, with the numbers. **4.3 visits per legal move against
-AlphaZero's 27.** That's a sample-efficiency limit, measured, not guessed.
-
-And the lesson I'll take into everything I build after this: **measure the
-thing you actually care about, and verify the measurement itself.** A
-falling loss curve is a hypothesis. The head-to-head match is the evidence.
-
-You can play it yourself in your browser at
-https://realgauravvyas.github.io/chess-ai/ --- the whole engine runs client-side, no server.
-
-Code, full results and the report are linked below. Thanks for watching.
+**46.2 percent** against its starting point: statistically level. The
+uncorrected run scored **31 percent** — clearly worse. And the candidates the
+gate rejected averaged **42 percent, p equals 0.004**. Self-play was still
+pulling the network down; gating kept every one of those out of the shipped
+model.
 
 ---
 
-## Recording notes
+## SLIDE 9 — What it taught me · 35s
 
-- **Pace:** ~145 wpm. Confident and brisk — this is a results talk.
-- **Highest-impact visuals:** the `2.5 — 5.5` head-to-head at 6:00, the
-  `46.2%` gated result at 7:40, and `15/15` at 8:40. Hold each for three
-  full seconds.
-- **Emphasise 4:15–5:30.** The point that a self-play loss curve cannot
-  measure strength is the intellectual core; deliver it slowly.
-- **Screen-record the dashboard first**, before recording audio — at high
-  simulation counts the model takes a few seconds per move and you'll want
-  to trim that.
+One last check: my gate ran eight-game matches and promoted **8 of 20**
+candidates. Pure chance predicts **7.8**. So I turned the same scrutiny on my
+own safeguard and found it underpowered.
+
+The lesson: **a falling loss curve is not evidence.** Measure the thing you
+care about — then verify the measurement itself.
+
+---
+
+## LOCAL DASHBOARD · 25s
+
+*Switch to the dashboard.*
+
+This is what I built to run and watch the training. Real curves from the run,
+the search's top candidate moves and its evaluation, and you can play any
+saved checkpoint. Every control has a hover explanation.
+
+---
+
+## GITHUB REPO · 20s
+
+*Switch to the repo.*
+
+Everything is open — both training stages, the search, the evaluation suite,
+and `RESULTS.md` with every measurement reproducible.
+
+---
+
+## LIVE DEMO · 20s
+
+*Switch back to the demo.*
+
+And it's playable in the browser. I exported the network and reimplemented
+the search in JavaScript, so the whole engine runs client-side — nothing is
+sent to a server.
+
+---
+
+## Close · 15s
+
+A working engine trained on 677,000 human positions, a training loop with a
+safeguard against regression, and an evaluation method rigorous enough to
+catch something a loss curve fundamentally cannot show.
+
+Thank you.
+
+---
+
+## Presenting notes
+
+- **Four windows only:** deck, live demo, dashboard, repo. Nothing here needs
+  the report or a terminal.
+- **Hold three numbers for a full three seconds:** `2.5 — 5.5` (slide 6),
+  `46.2%` (slide 8), `8/20 vs 7.8` (slide 9).
+- **Slow down on slide 4.** That a self-play loss curve cannot measure
+  strength is the intellectual core of the whole project.
+- **Open the demo tab before you start** so the 3 MB model is already loaded
+  and the first move is instant.
 - If a demo game starts repeating moves, that's the known repetition
-  limitation documented in `RESULTS.md` — cut to a different game rather
-  than explaining it on camera.
+  limitation — start a fresh game rather than explaining it live.
+- **If you run long,** slide 2 is the safest cut: "18 planes in, 4,672 moves
+  out" covers it in one line and saves ~30 seconds.
