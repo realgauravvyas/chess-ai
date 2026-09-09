@@ -397,6 +397,47 @@ def test_checkpoint_discovery():
 
 
 # =====================================================================
+def test_cli_entry_points():
+    """play.py and eval_match.py: the two CLIs a user actually runs."""
+    section("play.py")
+    import play
+
+    ck = play.default_checkpoint()
+    check("play.py resolves a checkpoint", ck is not None and ck.exists(), str(ck))
+    if ck:
+        check("play.py does not default to the regressed v5 latest.pt",
+              not (ck.name == "latest.pt" and ck.parent.name == "checkpoints"
+                   and "runs" not in str(ck)), str(ck))
+        check("play.py returns an absolute path (works from any cwd)",
+              ck.is_absolute(), str(ck))
+
+    # Promotion is mandatory, so "e7e8" parses but is never legal. Without
+    # auto-queening the player is told only "Illegal move, try again."
+    b = chess.Board("6k1/4P3/8/8/8/8/8/4K3 w - - 0 1")
+    mv = chess.Move.from_uci("e7e8")
+    check("a bare promotion move parses but is illegal",
+          mv not in b.legal_moves)
+    src = (ROOT / "play.py").read_text(encoding="utf-8")
+    check("play.py auto-queens bare promotions",
+          "promotion=chess.QUEEN" in src and "Promoting to a queen" in src)
+    queened = chess.Move(mv.from_square, mv.to_square, promotion=chess.QUEEN)
+    check("the auto-queened move is legal", queened in b.legal_moves)
+    check("underpromotion is still reachable",
+          chess.Move.from_uci("e7e8n") in b.legal_moves)
+
+    section("eval_match.py")
+    import eval_match
+    new = eval_match.default_new()
+    check("eval_match resolves a default challenger",
+          new is not None and Path(new).exists(), str(new))
+    check("eval_match no longer hardcodes the regressed iter_500",
+          "checkpoints\" / \"iter_500.pt" not in
+          (ROOT / "eval_match.py").read_text(encoding="utf-8"))
+    check("eval_match points at the rigorous tool",
+          "final_verdict" in eval_match.__doc__)
+
+
+# =====================================================================
 def test_training_wrapper():
     """run_training.py drives every training run and had no coverage.
 
@@ -584,8 +625,8 @@ def main():
     tests = [test_utils, test_move_encoding, test_model, test_evaluate,
              test_mcts, test_train_step, test_selfplay_samples,
              test_pgn_reader, test_checkpoint_discovery,
-             test_training_wrapper, test_dashboard_internals,
-             test_forensics]
+             test_cli_entry_points, test_training_wrapper,
+             test_dashboard_internals, test_forensics]
     for t in tests:
         try:
             t()

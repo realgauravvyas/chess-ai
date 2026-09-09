@@ -88,6 +88,17 @@ MUTATIONS = [
      '    if i + 1 >= len(args) or args[i + 1].startswith("--"):\n'
      '        sys.exit(f"{flag} needs a value.\\n\\n{USAGE}")',
      '    pass  # no validation'),
+
+    ("play.py left the player stuck when promoting a pawn",
+     "play.py",
+     "                queened = chess.Move(move.from_square, move.to_square,\n"
+     "                                     promotion=chess.QUEEN)",
+     "                queened = move  # no auto-queen"),
+
+    ("eval_match.py hardcoded the regressed checkpoints",
+     "eval_match.py",
+     "    new_path = Path(sys.argv[3]) if len(sys.argv) > 3 else default_new()",
+     '    new_path = ROOT / "checkpoints" / "iter_500.pt"'),
 ]
 
 

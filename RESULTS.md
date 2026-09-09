@@ -247,6 +247,48 @@ cheapest available way to strengthen the underpowered acceptance gate.
 
 Default is **off**, so the published experiments reproduce exactly.
 
+## 10. The two command-line entry points
+
+`play.py` and `eval_match.py` were the last modules with no coverage.
+
+**`play.py` made promotion a dead end.** Promotion is mandatory, so `e7e8`
+parses cleanly through `chess.Move.from_uci` but is never legal. The only
+feedback was *"Illegal move, try again."* with no hint that a piece letter
+is required - and the browser dashboard auto-queens, so the behaviour
+differed between the two front ends. It now auto-queens and names the
+underpromotion syntax. Its `--checkpoint` also defaulted to the relative
+string `"checkpoints/latest.pt"`: the v5 run's final weights, measured at
+31.2% against the pretrained baseline, via a path that breaks outside the
+project root.
+
+**`eval_match.py` was hardcoded to two regressed checkpoints**, with the
+pair baked into its docstring. It is superseded by
+`experiments/final_verdict.py`, which parallelises, alternates colours and
+reports a confidence interval. It now takes the checkpoints as arguments,
+defaults to the gated best against the frozen baseline, and points at the
+better tool.
+
+## 11. Playing a full game through the dashboard
+
+A complete 52-ply game was played through the HTTP API, validating every
+response: FEN advance, move legality, SAN agreement, eval-bar orientation,
+top-move probabilities, principal-variation legality and check detection.
+Plus castling, en passant, promotion, analysis mode, error handling,
+checkpoint switching and the stats feed.
+
+**No defects found.** One apparent failure was the test's own fault: it
+expected SAN `e8=Q` where the correct answer is `e8=Q+`, because the
+promotion gives check.
+
+Two observations about the engine rather than the dashboard:
+
+- Model response time is **0.4 s at 120 simulations**, so the interface
+  stays responsive at the default setting.
+- The game ended in **threefold repetition while the model was winning**
+  (eval −0.85 in its favour). This is the repetition blindness of
+  Section 6 costing a won game. It remains the most valuable outstanding
+  improvement, though the naive fix measured no strength gain.
+
 ## 9. The training wrapper turned a typo into a three-minute silent loop
 
 `run_training.py` drives every training run and was the only such module

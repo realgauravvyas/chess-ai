@@ -1,6 +1,7 @@
 """Play chess against the trained model from the command line."""
 import argparse
 import sys
+from pathlib import Path
 
 import chess
 import torch
@@ -9,6 +10,25 @@ from config import Config
 from model import AlphaZeroNet
 from mcts import MCTS
 from utils import load_checkpoint
+
+
+def default_checkpoint():
+    """Best available model: a gated winner, else the newest checkpoint.
+
+    The old default was the literal string "checkpoints/latest.pt" - a
+    relative path that breaks outside the project root, pointing at the v5
+    run's final weights, which measured 31.2% against the pretrained
+    baseline. Iteration numbers are not comparable across runs, so ordering
+    is by modification time.
+    """
+    root = Path(__file__).resolve().parent
+    dirs = [root / "checkpoints"]
+    dirs += sorted((root / "runs").glob("*/checkpoints"))
+    for pattern in ("best.pt", "iter_*.pt", "latest.pt"):
+        found = [q for d in dirs for q in d.glob(pattern)]
+        if found:
+            return max(found, key=lambda q: q.stat().st_mtime)
+    return None
 
 WHITE_SYMBOLS = {chess.PAWN: "P", chess.KNIGHT: "N", chess.BISHOP: "B",
                  chess.ROOK: "R", chess.QUEEN: "Q", chess.KING: "K"}
@@ -41,7 +61,9 @@ def render(board, ascii_mode=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Play chess against the trained model.")
-    parser.add_argument("--checkpoint", type=str, default="checkpoints/latest.pt")
+    parser.add_argument("--checkpoint", type=str, default=None,
+                        help="checkpoint to play against "
+                             "(default: best available)")
     parser.add_argument("--sims", type=int, default=400,
                         help="MCTS simulations per model move.")
     parser.add_argument("--color", choices=["white", "black"], default="white",
@@ -57,6 +79,11 @@ def main():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
         device = torch.device(args.device)
+
+    ckpt = args.checkpoint or default_checkpoint()
+    if ckpt is None:
+        sys.exit("no checkpoint found; train one first or pass --checkpoint")
+    args.checkpoint = str(ckpt)
 
     net = AlphaZeroNet(cfg.planes, cfg.filters, cfg.res_blocks,
                        action_planes=cfg.policy_size // 64).to(device)
@@ -85,6 +112,17 @@ def main():
             except ValueError:
                 print("Invalid move format. Use UCI like 'e2e4' or 'g1f3'.")
                 continue
+            # Promotion is mandatory, so "e7e8" parses but is never legal.
+            # Auto-queen rather than leaving the player stuck.
+            if (move not in board.legal_moves and move.promotion is None
+                    and board.piece_type_at(move.from_square) == chess.PAWN
+                    and chess.square_rank(move.to_square) in (0, 7)):
+                queened = chess.Move(move.from_square, move.to_square,
+                                     promotion=chess.QUEEN)
+                if queened in board.legal_moves:
+                    move = queened
+                    print(f"Promoting to a queen ({move.uci()}). "
+                          f"For a knight, type {cmd}n.")
             if move not in board.legal_moves:
                 print("Illegal move, try again.")
                 continue
