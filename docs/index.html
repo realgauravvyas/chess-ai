@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess AI — play a 760k-parameter network in your browser</title>
+<meta name="description" content="A small AlphaZero-style chess network,
+      trained on Lichess games and improved by gated self-play. Runs entirely
+      in your browser — no server.">
+<style>
+:root{
+  --bg:#10141c; --panel:#181e29; --panel2:#1f2735; --border:#2a3345;
+  --text:#dfe6f1; --muted:#8a97ab; --accent:#4f8cff; --green:#43b581;
+  --red:#e05667; --amber:#e8b64c;
+  --sq-light:#eeeed2; --sq-dark:#769656; --sq:66px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:14px 22px;border-bottom:1px solid var(--border);background:var(--panel)}
+h1{font-size:17px;margin:0;font-weight:700}
+.spacer{flex:1}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+main{display:grid;grid-template-columns:auto 340px;gap:18px;
+  padding:18px 22px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:13px;color:var(--muted);font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em}
+
+/* ---- board ---- */
+.boardwrap{display:flex;gap:12px;align-items:flex-start}
+#board{display:grid;grid-template-columns:repeat(8,var(--sq));
+  grid-template-rows:repeat(8,var(--sq));border-radius:6px;overflow:hidden;
+  border:1px solid var(--border)}
+.sq{position:relative;display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--sq) * .78);line-height:1;cursor:pointer;user-select:none}
+.sq.light{background:var(--sq-light)} .sq.dark{background:var(--sq-dark)}
+.sq.sel{box-shadow:inset 0 0 0 4px rgba(79,140,255,.85)}
+.sq.last{box-shadow:inset 0 0 0 4px rgba(232,182,76,.55)}
+.sq.check{box-shadow:inset 0 0 0 4px rgba(224,86,103,.9)}
+.dot{position:absolute;width:26%;height:26%;border-radius:50%;
+  background:rgba(0,0,0,.32);pointer-events:none}
+.sq.cap .dot{width:88%;height:88%;background:transparent;
+  border:5px solid rgba(0,0,0,.3)}
+.coord{position:absolute;font-size:10px;font-weight:700;opacity:.55;color:#333}
+.coord.f{bottom:2px;right:4px} .coord.r{top:2px;left:4px}
+
+/* ---- eval bar ---- */
+.evalbar{width:16px;height:calc(var(--sq) * 8);border-radius:8px;
+  background:#39424f;position:relative;overflow:hidden;
+  border:1px solid var(--border)}
+.evalfill{position:absolute;left:0;right:0;background:#e8edf5;transition:.35s}
+.evalmid{position:absolute;top:50%;left:0;right:0;height:1px;
+  background:rgba(255,255,255,.35)}
+
+/* ---- controls ---- */
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+select,input[type=range]{width:100%}
+select{background:var(--panel2);color:var(--text);border:1px solid var(--border);
+  border-radius:7px;padding:7px 9px}
+button{background:var(--accent);color:#fff;border:0;border-radius:7px;
+  padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+button.ghost{background:var(--panel2);color:var(--text);
+  border:1px solid var(--border)}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#status{margin-top:10px;font-size:13px;min-height:20px}
+.muted{color:var(--muted)}
+.bad{color:var(--red)} .good{color:var(--green)}
+
+/* ---- top moves ---- */
+.tmrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px}
+.tmbar{flex:1;height:8px;background:var(--panel2);border-radius:5px;
+  overflow:hidden}
+.tmfill{height:100%;background:var(--accent)}
+.pct{width:38px;text-align:right;color:var(--muted);font-size:12px}
+.movelist{max-height:170px;overflow:auto;font-size:13px}
+.movelist td{padding:1px 8px 1px 0}
+.movelist .num{color:var(--muted);width:28px}
+
+/* ---- hover help ---- */
+.info{display:inline-flex;align-items:center;justify-content:center;
+  width:15px;height:15px;border-radius:50%;border:1px solid var(--border);
+  color:var(--muted);font-size:10px;font-weight:700;font-style:normal;
+  margin-left:6px;cursor:help;position:relative;vertical-align:middle;
+  flex:none;user-select:none;text-transform:none;letter-spacing:normal}
+.info:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.info::after{content:attr(data-tip);position:absolute;top:150%;left:-6px;
+  width:250px;padding:9px 11px;border-radius:7px;background:#0d1119;
+  color:var(--text);text-transform:none;letter-spacing:normal;
+  font-size:12px;font-weight:400;line-height:1.5;text-align:left;
+  white-space:normal;opacity:0;visibility:hidden;transition:opacity .14s;
+  z-index:200;border:1px solid var(--border);
+  box-shadow:0 8px 26px rgba(0,0,0,.6)}
+.info:hover::after{opacity:1;visibility:visible}
+
+#loading{padding:40px 22px;color:var(--muted)}
+.bar{height:5px;background:var(--panel2);border-radius:4px;overflow:hidden;
+  margin-top:8px}
+.barfill{height:100%;width:0;background:var(--accent);transition:width .2s}
+footer{padding:16px 22px;color:var(--muted);font-size:12px;
+  border-top:1px solid var(--border);margin-top:10px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#9819; Chess AI</h1>
+  <span class="muted" id="hdr">760,717 parameters &middot; running in your browser</span>
+  <div class="spacer"></div>
+  <a href="https://github.com/realgauravvyas/chess-ai">Source &amp; report</a>
+</header>
+
+<div id="loading">Loading the network (3 MB)&hellip;<div class="bar"><div class="barfill" id="loadbar"></div></div></div>
+
+<main id="app" style="display:none">
+  <div>
+    <div class="card">
+      <div class="boardwrap">
+        <div class="evalbar" title="Who is ahead, from White's side">
+          <div class="evalfill" id="evalfill"></div>
+          <div class="evalmid"></div>
+        </div>
+        <div id="board"></div>
+      </div>
+      <div id="status" class="muted">Your move.</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Play<i class="info" data-tip="Play a game against it. Click a piece, then where to move it."></i></h2>
+      <div class="grid2">
+        <div>
+          <label>Your side<i class="info" data-tip="Pick your side. Choose black and it moves first."></i></label>
+          <select id="mycolor"><option value="w">White</option><option value="b">Black</option></select>
+        </div>
+        <div>
+          <label>Model<i class="info" data-tip="Which saved version to play against. Gated is the stronger one from training."></i></label>
+          <select id="which"><option value="best">Gated (final)</option></select>
+        </div>
+      </div>
+      <label style="margin-top:10px">Thinking: <b id="simsval">120</b> simulations<i class="info" data-tip="How many moves ahead it looks. More is stronger but slower."></i></label>
+      <input type="range" id="sims" min="20" max="400" step="20" value="120">
+      <div class="row">
+        <button onclick="newGame()">New game</button>
+        <button class="ghost" onclick="undo()">Undo</button>
+        <button class="ghost" onclick="flip()">Flip</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>What it is considering<i class="info" data-tip="The moves it looked at most, and how often it chose each."></i></h2>
+      <div id="topmoves" class="muted">Play a move to see the search.</div>
+    </div>
+
+    <div class="card">
+      <h2>Moves</h2>
+      <div class="movelist"><table id="movetable"></table></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  A 760,717-parameter residual network, trained on 676,648 Lichess positions
+  and then by gated self-play, wrapped in Monte Carlo Tree Search. The model
+  and the search both run in this page &mdash; nothing is sent to a server.
+  &nbsp;<a href="https://github.com/realgauravvyas/chess-ai">Code, report and measurements</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+<script type="module">
+import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm";
+window.Chess = Chess;
+const s = document.createElement("script");
+s.src = "engine.js";
+s.onload = () => import("./app.js");
+document.body.appendChild(s);
+</script>
+</body>
+</html>

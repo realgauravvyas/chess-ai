@@ -58,3 +58,6 @@ docs/chess_ai_slides.pdf
 
 # keep the final run log as evidence, ignore the rest
 !docs/train_v7_final.log
+
+# the browser demo needs this one checked in
+!docs/chess_model.onnx
