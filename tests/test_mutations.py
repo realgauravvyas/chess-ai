@@ -71,6 +71,23 @@ MUTATIONS = [
      "dashboard/server.py",
      "        net = copy.deepcopy(load_net(ckpt_path))",
      "        net = load_net(ckpt_path)"),
+
+    ("the worker count was taken unvalidated from argv",
+     "run_training.py",
+     '    if args and args[0].startswith("--"):\n'
+     '        sys.exit(f"expected the worker count first, got {args[0]!r}.'
+     '\\n\\n{USAGE}")\n'
+     '    workers = args[0] if args else "6"\n'
+     '    if not workers.isdigit():\n'
+     '        sys.exit(f"worker count must be a number, got {workers!r}.'
+     '\\n\\n{USAGE}")',
+     '    workers = args[0] if args else "6"'),
+
+    ("a flag with no value raised a bare IndexError",
+     "run_training.py",
+     '    if i + 1 >= len(args) or args[i + 1].startswith("--"):\n'
+     '        sys.exit(f"{flag} needs a value.\\n\\n{USAGE}")',
+     '    pass  # no validation'),
 ]
 
 

@@ -26,30 +26,70 @@ def find_latest_checkpoint(checkpoint_dir):
     return best
 
 
+USAGE = """usage: run_training.py [--run-dir DIR] [--seed-from CKPT] \
+[WORKERS] [train.py options...]
+
+  --run-dir DIR     keep this run's checkpoints and replay buffer in DIR
+                    instead of the shared project checkpoints/ folder
+  --seed-from CKPT  starting checkpoint for the first attempt, used only
+                    while the run directory has no checkpoints of its own
+  WORKERS           parallel self-play processes (default 6). Positional,
+                    and must come before any train.py option.
+
+Everything after WORKERS is passed straight through to train.py.
+
+example:
+  python run_training.py --run-dir runs/v8 --seed-from checkpoints/iter_200.pt \
+6 --device auto --sims 128 --gate
+"""
+
+
+def take_value(args, flag):
+    """Pop `flag` and its value out of `args`; return the value or None."""
+    if flag not in args:
+        return None
+    i = args.index(flag)
+    if i + 1 >= len(args) or args[i + 1].startswith("--"):
+        sys.exit(f"{flag} needs a value.\n\n{USAGE}")
+    value = args[i + 1]
+    del args[i:i + 2]
+    return value
+
+
 def main():
     python_exe = sys.executable
     project_dir = os.path.dirname(os.path.abspath(__file__))
     args = sys.argv[1:]
 
+    if "-h" in args or "--help" in args:
+        print(USAGE)
+        return
+
     # --run-dir lets a run keep its own checkpoints/ and replay buffer
     # instead of writing into the shared project checkpoints/ folder.
-    run_dir = project_dir
-    if "--run-dir" in args:
-        i = args.index("--run-dir")
-        run_dir = os.path.abspath(args[i + 1])
-        os.makedirs(os.path.join(run_dir, "checkpoints"), exist_ok=True)
-        del args[i:i + 2]
+    run_dir = take_value(args, "--run-dir")
+    run_dir = os.path.abspath(run_dir) if run_dir else project_dir
+    os.makedirs(os.path.join(run_dir, "checkpoints"), exist_ok=True)
 
     # --seed-from gives the first attempt a starting checkpoint when the
     # run directory is still empty.
-    seed_from = None
-    if "--seed-from" in args:
-        i = args.index("--seed-from")
-        seed_from = os.path.abspath(args[i + 1])
-        del args[i:i + 2]
+    seed_from = take_value(args, "--seed-from")
+    if seed_from:
+        seed_from = os.path.abspath(seed_from)
+        if not os.path.exists(seed_from):
+            sys.exit(f"--seed-from checkpoint not found: {seed_from}")
 
     checkpoint_dir = os.path.join(run_dir, "checkpoints")
+
+    # The worker count is positional and must come first. Without this check
+    # `run_training.py --device auto 6` silently becomes
+    # `train.py --workers --device auto 6`, which fails argparse on every
+    # one of the 20 retries below.
+    if args and args[0].startswith("--"):
+        sys.exit(f"expected the worker count first, got {args[0]!r}.\n\n{USAGE}")
     workers = args[0] if args else "6"
+    if not workers.isdigit():
+        sys.exit(f"worker count must be a number, got {workers!r}.\n\n{USAGE}")
     passthrough = args[1:]
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -66,6 +106,13 @@ def main():
         if result.returncode == 0:
             print("[wrapper] training completed successfully.")
             return
+
+        # argparse exits 2 on a usage error. That is deterministic, so
+        # retrying it 20 times just hides the mistake for three minutes.
+        if result.returncode == 2:
+            print("[wrapper] train.py rejected its arguments (exit 2); "
+                  "not retrying.")
+            sys.exit(2)
 
         print(f"[wrapper] train.py exited with code {result.returncode}; "
               f"restarting in {COOLDOWN}s...")

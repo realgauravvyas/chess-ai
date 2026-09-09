@@ -397,6 +397,79 @@ def test_checkpoint_discovery():
 
 
 # =====================================================================
+def test_training_wrapper():
+    """run_training.py drives every training run and had no coverage.
+
+    Its worker count is positional and must come first. Without validation
+    `run_training.py --device auto 6` silently built
+    `train.py --workers --device auto 6`, which fails argparse - and the
+    wrapper then retried that deterministic failure 20 times.
+    """
+    section("run_training: argument handling")
+    import subprocess
+    import types
+
+    import run_training as rt
+
+    captured = []
+    real_sub, real_time = rt.subprocess, rt.time
+    rt.subprocess = types.SimpleNamespace(
+        run=lambda cmd, cwd=None, **kw: (captured.append((list(cmd), cwd)),
+                                         types.SimpleNamespace(returncode=0))[1])
+    rt.time = types.SimpleNamespace(sleep=lambda *_: None)
+    real_argv = sys.argv
+    try:
+        # documented form: workers first, everything else passed through
+        captured.clear()
+        sys.argv = ["run_training.py", "6", "--device", "auto"]
+        rt.main()
+        cmd = captured[0][0]
+        w = cmd[cmd.index("--workers") + 1]
+        check("worker count is read from the leading positional", w == "6", w)
+        check("train.py options are passed through", "--device" in cmd)
+
+        # a flag before the positional count must be rejected, not mangled
+        captured.clear()
+        sys.argv = ["run_training.py", "--device", "auto", "6"]
+        try:
+            rt.main()
+            bad = captured[0][0]
+            got = bad[bad.index("--workers") + 1]
+            check("a leading flag is rejected, not treated as the worker count",
+                  False, f"built --workers {got!r}")
+        except SystemExit:
+            check("a leading flag is rejected, not treated as the worker count",
+                  True)
+
+        # a flag with no value must not raise IndexError
+        for argv, label in ([["run_training.py", "--run-dir"], "--run-dir with no value"],
+                            [["run_training.py", "--seed-from"], "--seed-from with no value"]):
+            sys.argv = argv
+            try:
+                rt.main()
+                check(f"{label} is rejected", False, "no error raised")
+            except SystemExit:
+                check(f"{label} is rejected cleanly", True)
+            except IndexError as exc:
+                check(f"{label} is rejected cleanly", False, f"IndexError: {exc}")
+
+        # a non-numeric worker count must be caught
+        sys.argv = ["run_training.py", "abc"]
+        try:
+            rt.main()
+            check("a non-numeric worker count is rejected", False)
+        except SystemExit:
+            check("a non-numeric worker count is rejected", True)
+    finally:
+        rt.subprocess, rt.time, sys.argv = real_sub, real_time, real_argv
+
+    # a usage error is deterministic: retrying it 20 times only hides it
+    src = (ROOT / "run_training.py").read_text(encoding="utf-8")
+    check("a usage error (exit 2) is not retried",
+          "returncode == 2" in src)
+
+
+# =====================================================================
 def test_dashboard_internals():
     """In-process checks of dashboard logic that the HTTP tests miss."""
     section("dashboard: checkpoint handling")
@@ -511,7 +584,8 @@ def main():
     tests = [test_utils, test_move_encoding, test_model, test_evaluate,
              test_mcts, test_train_step, test_selfplay_samples,
              test_pgn_reader, test_checkpoint_discovery,
-             test_dashboard_internals, test_forensics]
+             test_training_wrapper, test_dashboard_internals,
+             test_forensics]
     for t in tests:
         try:
             t()

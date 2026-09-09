@@ -247,6 +247,34 @@ cheapest available way to strengthen the underpowered acceptance gate.
 
 Default is **off**, so the published experiments reproduce exactly.
 
+## 9. The training wrapper turned a typo into a three-minute silent loop
+
+`run_training.py` drives every training run and was the only such module
+with no test coverage. Driving `main()` with a stubbed `subprocess` exposed
+three defects:
+
+| Defect | Effect |
+|---|---|
+| The worker count is positional and must come first, but nothing checked it | `run_training.py --device auto 6` silently built `train.py --workers --device auto 6` |
+| Any non-zero exit was treated as a crash worth retrying | argparse rejects that command with exit code 2, and the wrapper retried the deterministic failure **20 times at 10s apart** |
+| `args[i + 1]` with no bounds check | `--run-dir` as the final argument raised a bare `IndexError` |
+
+Together these mean a single misplaced flag produced roughly 200 seconds of
+retry output before giving up, with no indication that the arguments were
+the problem. The wrapper now validates its arguments, prints usage, and
+stops immediately on exit code 2 because a usage error cannot succeed on
+retry.
+
+One note on the mutation suite: the first version of the worker-count
+mutation removed only the `startswith("--")` guard, and the tests stayed
+green. That was **not** a coverage hole - the `isdigit()` guard still
+rejected `--device`, so the code was still correct. The mutation was
+invalid, and now removes both guards to reproduce the actual historical
+state. Distinguishing "the tests missed it" from "the mutation did not
+reproduce the bug" matters; only the first is a coverage problem.
+
+Mutation coverage now stands at **11/11**, over 104 checks.
+
 ## 8. Dashboard teach-me loop: two bugs, one of them a regression
 
 Found by probing what the test suite did not yet cover.
