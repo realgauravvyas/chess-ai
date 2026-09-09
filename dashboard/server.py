@@ -32,6 +32,10 @@ from utils import load_checkpoint              # noqa: E402
 LOG_DIR = ROOT / "logs"
 CKPT_DIR = ROOT / "checkpoints"
 
+# On a public deployment the endpoints that write files or stop the server
+# must be closed off; playing, analysis and the charts stay available.
+READ_ONLY = os.environ.get("CHESS_AI_READONLY", "").lower() in ("1", "true", "yes")
+
 app = Flask(__name__, static_folder=str(Path(__file__).parent / "static"),
             static_url_path="/static")
 
@@ -445,6 +449,10 @@ def api_eval_status():
 @app.route("/api/save_game", methods=["POST"])
 def api_save_game():
     """Persist a game the user just played (list of UCI moves) as PGN."""
+    if READ_ONLY:
+        return jsonify({"error": "disabled on the public demo; "
+                                 "clone the repo to use this"}), 403
+
     import chess.pgn
     body = request.get_json(force=True, silent=True) or {}
     uci_moves = body.get("uci") or []
@@ -536,6 +544,9 @@ def _teach_worker(ckpt_path):
 
 @app.route("/api/teach", methods=["POST"])
 def api_teach():
+    if READ_ONLY:
+        return jsonify({"error": "disabled on the public demo; "
+                                 "clone the repo to use this"}), 403
     if _teach_job["running"]:
         return jsonify({"error": "already teaching"}), 409
     if not MY_GAMES.exists() or MY_GAMES.stat().st_size < 60:
@@ -558,6 +569,10 @@ def api_teach_status():
 @app.route("/api/shutdown", methods=["POST"])
 def api_shutdown():
     """Graceful shutdown. Writes a flag so the watchdog stays down."""
+    if READ_ONLY:
+        return jsonify({"error": "disabled on the public demo; "
+                                 "clone the repo to use this"}), 403
+
     try:
         DISABLED_FLAG.write_text("shutdown requested")
     except OSError:
@@ -583,8 +598,10 @@ def api_health():
 # --------------------------------------------------------------------- main
 def main():
     parser = argparse.ArgumentParser(description="Chess AI dashboard server")
-    parser.add_argument("--port", type=int, default=5000)
-    parser.add_argument("--host", type=str, default="127.0.0.1")
+    parser.add_argument("--port", type=int,
+                        default=int(os.environ.get("PORT", 5000)))
+    parser.add_argument("--host", type=str,
+                        default=os.environ.get("HOST", "127.0.0.1"))
     parser.add_argument("--no-flag-clear", action="store_true",
                         help="do not clear the disabled flag on startup")
     args = parser.parse_args()
