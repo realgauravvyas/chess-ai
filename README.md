@@ -1,5 +1,11 @@
 # Chess AI — supervised pretraining + self-play reinforcement learning
 
+### ▶ [Play it in your browser](https://realgauravvyas.github.io/chess-ai/)
+
+No install, no server — the network and the Monte Carlo Tree Search both run
+client-side. Give it a second on the first move while the 3 MB model loads.
+
+
 A compact AlphaZero-style chess engine that runs end to end on a single
 desktop machine. A **760,717-parameter** residual policy–value network is
 first trained to imitate human games from the Lichess database, then
@@ -91,9 +97,6 @@ while the training loss fell the whole way. Loss going down is not evidence
 of strength. See [RESULTS.md](RESULTS.md).
 
 ## Playing
-
-**Try it in your browser, no install:** https://realgauravvyas.github.io/chess-ai/
-The network and the search both run client-side.
 
 
 ```powershell
